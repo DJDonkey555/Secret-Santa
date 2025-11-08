@@ -55,14 +55,17 @@
 
         <div class="input-group">
           <label>Your Wishlist</label>
-          <div class="wish-input-group">
-            <input type="text" id="createWish1" class="form-input" placeholder="🎁 Most wanted gift">
+          <div class="wish-input-with-cost">
+            <textarea id="createWish1" class="wish-textarea" placeholder="🎁 Most wanted gift"></textarea>
+            <input type="text" id="createWishCost1" class="cost-input" placeholder="R" maxlength="6">
           </div>
-          <div class="wish-input-group">
-            <input type="text" id="createWish2" class="form-input" placeholder="🎁 Second choice">
+          <div class="wish-input-with-cost">
+            <textarea id="createWish2" class="wish-textarea" placeholder="🎁 Second choice"></textarea>
+            <input type="text" id="createWishCost2" class="cost-input" placeholder="R" maxlength="6">
           </div>
-          <div class="wish-input-group">
-            <input type="text" id="createWish3" class="form-input" placeholder="🎁 Third choice">
+          <div class="wish-input-with-cost">
+            <textarea id="createWish3" class="wish-textarea" placeholder="🎁 Third choice"></textarea>
+            <input type="text" id="createWishCost3" class="cost-input" placeholder="R" maxlength="6">
           </div>
           <button id="btnAddWish" class="add-more-btn">
             <i class="fas fa-plus"></i> Add more wishes
@@ -81,10 +84,11 @@
               <input type="number" id="maxPlayers" class="form-input small" value="10" min="3" max="20">
             </div>
           </div>
+          
           <div class="input-group">
-            <label>Gift Deadline</label>
+            <label class="centered-label">Gift Deadline</label>
             <input type="date" id="giftDeadline" class="form-input" value="2023-12-24">
-            <div class="input-hint">Select the date when gifts should be exchanged</div>
+            <div class="input-hint centered-label">Select the date when gifts should be exchanged</div>
           </div>
         </div>
 
@@ -122,14 +126,17 @@
 
         <div class="input-group">
           <label>Your Wishlist</label>
-          <div class="wish-input-group">
-            <input type="text" id="joinWish1" class="form-input" placeholder="🎁 Most wanted gift">
+          <div class="wish-input-with-cost">
+            <textarea id="joinWish1" class="wish-textarea" placeholder="🎁 Most wanted gift"></textarea>
+            <input type="text" id="joinWishCost1" class="cost-input" placeholder="R" maxlength="6">
           </div>
-          <div class="wish-input-group">
-            <input type="text" id="joinWish2" class="form-input" placeholder="🎁 Second choice">
+          <div class="wish-input-with-cost">
+            <textarea id="joinWish2" class="wish-textarea" placeholder="🎁 Second choice"></textarea>
+            <input type="text" id="joinWishCost2" class="cost-input" placeholder="R" maxlength="6">
           </div>
-          <div class="wish-input-group">
-            <input type="text" id="joinWish3" class="form-input" placeholder="🎁 Third choice">
+          <div class="wish-input-with-cost">
+            <textarea id="joinWish3" class="wish-textarea" placeholder="🎁 Third choice"></textarea>
+            <input type="text" id="joinWishCost3" class="cost-input" placeholder="R" maxlength="6">
           </div>
           <button id="btnAddWishJoin" class="add-more-btn">
             <i class="fas fa-plus"></i> Add more wishes
@@ -203,14 +210,17 @@
           <div class="input-group">
             <label>Your Wishlist</label>
             <div id="editWishInputs">
-              <div class="wish-input-group">
-                <input type="text" id="editWish1" class="form-input" placeholder="🎁 Most wanted gift">
+              <div class="wish-input-with-cost">
+                <textarea id="editWish1" class="wish-textarea" placeholder="🎁 Most wanted gift"></textarea>
+                <input type="text" id="editWishCost1" class="cost-input" placeholder="R" maxlength="6">
               </div>
-              <div class="wish-input-group">
-                <input type="text" id="editWish2" class="form-input" placeholder="🎁 Second choice">
+              <div class="wish-input-with-cost">
+                <textarea id="editWish2" class="wish-textarea" placeholder="🎁 Second choice"></textarea>
+                <input type="text" id="editWishCost2" class="cost-input" placeholder="R" maxlength="6">
               </div>
-              <div class="wish-input-group">
-                <input type="text" id="editWish3" class="form-input" placeholder="🎁 Third choice">
+              <div class="wish-input-with-cost">
+                <textarea id="editWish3" class="wish-textarea" placeholder="🎁 Third choice"></textarea>
+                <input type="text" id="editWishCost3" class="cost-input" placeholder="R" maxlength="6">
               </div>
             </div>
             <button id="btnAddEditWish" class="add-more-btn">
