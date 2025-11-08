@@ -32,7 +32,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
-  position: fixed;
+  position: relative;
   width: 100%;
   height: 100%;
 }
@@ -66,6 +66,7 @@ body {
   padding: 20px;
   padding-bottom: 80px; /* Space for bottom nav */
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* Screen Header */
@@ -228,6 +229,18 @@ body {
   font-weight: 600;
   color: var(--dark);
   font-size: 1rem;
+}
+
+.centered-label {
+  text-align: center;
+  display: block;
+}
+
+.input-hint {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  margin-top: 5px;
+  font-style: italic;
 }
 
 .wish-input-group {
@@ -656,6 +669,7 @@ body {
   overflow-y: auto;
   transform: translateY(100%);
   transition: transform 0.3s;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal.active .modal-content {
