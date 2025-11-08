@@ -55,7 +55,8 @@ let local = {
   name: null,
   myUid: null,
   isOwner: false,
-  wishes: []
+  wishes: [],
+  assignedToUid: null // NEW: Track who we're assigned to gift
 };
 
 // Wish counters and tracking
@@ -506,9 +507,10 @@ async function rejoinRoom() {
     return;
   }
   
-  // Get user's wishes
+  // Get user's wishes and assignment
   const memberData = memberSnap.val();
   local.wishes = memberData.wishes || [];
+  local.assignedToUid = memberData.assignedToUid || null; // NEW: Get our assignment
   
   // Update UI
   document.getElementById('lobbyTitle').textContent = `Lobby: ${local.room}`;
@@ -589,6 +591,11 @@ function listenRoom(room) {
     const members = snap.val() || {};
     const membersArr = Object.entries(members).map(([uid, info]) => ({ uid, ...info }));
     
+    // Update our local assignment if it exists
+    if (members[local.myUid] && members[local.myUid].assignedToUid) {
+      local.assignedToUid = members[local.myUid].assignedToUid;
+    }
+    
     renderPlayerList(membersArr);
     playerCount.textContent = `${membersArr.length} player${membersArr.length !== 1 ? 's' : ''}`;
     
@@ -639,7 +646,7 @@ function listenRoom(room) {
   });
 }
 
-// Render player list
+// Render player list - FIXED VERSION
 function renderPlayerList(players) {
   playersList.innerHTML = '';
   
@@ -647,8 +654,9 @@ function renderPlayerList(players) {
     const playerCard = document.createElement('div');
     playerCard.className = 'player-card';
     
-    // Check if this player is assigned to the current user
-    if (player.assignedToUid === local.myUid) {
+    // FIXED: Check if this player is the one WE are assigned to gift
+    // (not the one who is assigned to gift to us)
+    if (player.uid === local.assignedToUid) {
       playerCard.classList.add('assigned');
     }
     
@@ -819,6 +827,7 @@ async function startDraw() {
     const to = assigned[i];
     const target = entries.find(e => e.uid === to);
     
+    // FIXED: Store assignment correctly - each user gets assignedToUid pointing to who THEY gift
     updates[`rooms/${room}/members/${from}/assignedToUid`] = to;
     updates[`rooms/${room}/assignments/${from}`] = {
       toUid: to,
@@ -880,7 +889,8 @@ async function leaveLobby() {
       name: null,
       myUid: null,
       isOwner: false,
-      wishes: []
+      wishes: [],
+      assignedToUid: null
     };
     
     clearLocalStorage();
