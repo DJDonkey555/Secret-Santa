@@ -41,7 +41,6 @@
     <div class="screen-header">
       <button class="back-btn" onclick="showScreen(homeScreen)">
         <i class="fas fa-arrow-left"></i>
-        <span>Back</span>
       </button>
       <h2>Create Lobby</h2>
       <div class="header-spacer"></div>
@@ -71,7 +70,7 @@
         </div>
 
         <div class="input-group">
-          <label>Lobby Settings</label>
+          <label class="centered-label">Lobby Settings</label>
           <div class="settings-grid">
             <div class="setting-item">
               <span>Min Spend</span>
@@ -82,7 +81,11 @@
               <input type="number" id="maxPlayers" class="form-input small" value="10" min="3" max="20">
             </div>
           </div>
-          <input type="date" id="giftDeadline" class="form-input" placeholder="Gift deadline" value="2023-12-24">
+          <div class="input-group">
+            <label>Gift Deadline</label>
+            <input type="date" id="giftDeadline" class="form-input" value="2023-12-24">
+            <div class="input-hint">Select the date when gifts should be exchanged</div>
+          </div>
         </div>
 
         <div class="form-actions">
@@ -100,7 +103,6 @@
     <div class="screen-header">
       <button class="back-btn" onclick="showScreen(homeScreen)">
         <i class="fas fa-arrow-left"></i>
-        <span>Back</span>
       </button>
       <h2>Join Lobby</h2>
       <div class="header-spacer"></div>
@@ -148,8 +150,7 @@
   <div id="lobbyScreen" class="screen">
     <div class="screen-header">
       <button class="back-btn" onclick="leaveLobby()">
-        <i class="fas fa-sign-out-alt"></i>
-        <span>Leave</span>
+        <i class="fas fa-arrow-left"></i>
       </button>
       <h2 id="lobbyTitle">Lobby</h2>
       <div class="header-actions">
