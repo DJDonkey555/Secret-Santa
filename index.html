@@ -8,201 +8,167 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Home Screen -->
-    <div id="homeScreen" class="screen active">
-      <div class="header">
-        <h1>Secret Santa</h1>
-      </div>
-      <div class="home-content">
-        <div class="home-illustration">
-          <i class="fas fa-gifts"></i>
-        </div>
-        <h1 class="home-title">Let's Go!</h1>
-        <p class="home-subtitle">Give a small piece of happiness to your colleagues!</p>
-        <div class="home-buttons">
-          <button id="btnCreate" class="home-btn btn-primary">
-            <i class="fas fa-plus-circle"></i> Create Lobby
-          </button>
-          <button id="btnJoin" class="home-btn btn-outline">
-            <i class="fas fa-sign-in-alt"></i> Join Lobby
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Lobby Screen -->
-    <div id="lobbyScreen" class="screen right">
-      <div class="header">
-        <button id="btnMenu" class="header-btn">
-          <i class="fas fa-bars"></i>
-        </button>
-        <h1 id="lobbyTitle">Lobby Name</h1>
-        <div class="header-actions">
-          <button class="header-btn" id="btnUser">
-            <i class="fas fa-user"></i>
-          </button>
-        </div>
-      </div>
-      
-      <div class="lobby-content">
-        <div class="tabs">
-          <button class="tab active" data-tab="players">Players</button>
-          <button class="tab" data-tab="myCard">My Card</button>
-          <button class="tab" data-tab="settings">Settings</button>
-        </div>
-        
-        <!-- Players Tab -->
-        <div id="playersTab" class="tab-content active">
-          <div class="players-list" id="playersList">
-            <!-- Player cards will be dynamically added here -->
-          </div>
-        </div>
-        
-        <!-- My Card Tab -->
-        <div id="myCardTab" class="tab-content">
-          <div class="wishlist-form">
-            <div class="form-group">
-              <label class="form-label">Your Name</label>
-              <input type="text" id="playerName" class="form-input" placeholder="Enter your name">
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Your Wishlist</label>
-              <input type="text" id="wish1" class="form-input" placeholder="Most desired gift">
-              <input type="text" id="wish2" class="form-input" placeholder="Second choice">
-              <input type="text" id="wish3" class="form-input" placeholder="Third choice">
-            </div>
-            
-            <button id="btnAddWish" class="add-wish-btn">
-              <i class="fas fa-plus-circle"></i> Add another wish
-            </button>
-            
-            <div class="form-actions">
-              <button id="btnSaveWishlist" class="btn btn-primary">
-                <i class="fas fa-save"></i> Save
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Settings Tab -->
-        <div id="settingsTab" class="tab-content">
-          <div class="settings-list">
-            <div class="setting-item">
-              <div class="setting-title">Minimum Spend</div>
-              <div class="setting-value">R<span id="minSpendValue">50</span></div>
-            </div>
-            
-            <div class="setting-item">
-              <div class="setting-title">Max Players</div>
-              <div class="setting-value" id="maxPlayersValue">10</div>
-            </div>
-            
-            <div class="setting-item">
-              <div class="setting-title">Gift Deadline</div>
-              <div class="setting-value" id="giftDeadlineValue">December 24, 2023</div>
-            </div>
-            
-            <!-- Admin Settings (only visible to admin) -->
-            <div id="adminSettings" class="hidden">
-              <div class="setting-item">
-                <div class="setting-title">Admin Controls</div>
-                <div class="form-actions" style="margin-top: 15px;">
-                  <button id="btnEditSettings" class="btn btn-primary">
-                    <i class="fas fa-cog"></i> Edit Settings
-                  </button>
-                  <button id="btnStartDraw" class="btn btn-primary">
-                    <i class="fas fa-random"></i> Start Draw
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Bottom Navigation -->
-      <div class="bottom-nav">
-        <button class="nav-item" data-tab="players">
-          <i class="fas fa-users nav-icon"></i>
-          <span class="nav-label">Players</span>
-        </button>
-        <button class="nav-item" data-tab="myCard">
-          <i class="fas fa-address-card nav-icon"></i>
-          <span class="nav-label">My Card</span>
-        </button>
-        <button class="nav-item" data-tab="settings">
-          <i class="fas fa-cog nav-icon"></i>
-          <span class="nav-label">Settings</span>
-        </button>
-      </div>
-    </div>
-    
-    <!-- Result Screen -->
-    <div id="resultScreen" class="screen right">
-      <div class="header">
-        <button id="btnBackFromResult" class="header-btn">
-          <i class="fas fa-arrow-left"></i>
-        </button>
-        <h1>Your Match</h1>
-        <div class="header-actions"></div>
-      </div>
-      
-      <div class="result-content">
-        <div class="result-icon">
+  <!-- Home Screen -->
+  <div id="homeScreen" class="screen active">
+    <div class="screen-content">
+      <div class="logo-container">
+        <div class="logo">
           <i class="fas fa-gift"></i>
         </div>
-        <h2 class="result-title">Hello, <span id="userNameResult">User</span>!</h2>
-        <p class="result-message">The draw was carried out and you have a match. Click the button to find out who it is!</p>
-        
-        <button id="btnRevealMatch" class="btn btn-primary" style="margin-bottom: 30px;">
-          Find out who I got?
+        <h1>Secret Santa</h1>
+        <p class="tagline">Spread joy with your colleagues!</p>
+      </div>
+
+      <div class="action-buttons">
+        <button id="btnCreate" class="action-btn primary">
+          <i class="fas fa-plus"></i>
+          <span>Create Lobby</span>
         </button>
+        <button id="btnJoin" class="action-btn secondary">
+          <i class="fas fa-sign-in-alt"></i>
+          <span>Join Lobby</span>
+        </button>
+      </div>
+
+      <div class="festive-elements">
+        <div class="ornament red"></div>
+        <div class="ornament green"></div>
+        <div class="ornament gold"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lobby Screen -->
+  <div id="lobbyScreen" class="screen">
+    <div class="header">
+      <button id="btnBack" class="header-btn">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <h1 id="lobbyTitle">Lobby</h1>
+      <button class="header-btn" id="btnUser">
+        <i class="fas fa-user"></i>
+      </button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="players">
+        <i class="fas fa-users"></i>
+        <span>Players</span>
+      </button>
+      <button class="tab" data-tab="myCard">
+        <i class="fas fa-address-card"></i>
+        <span>My Card</span>
+      </button>
+      <button class="tab" data-tab="settings">
+        <i class="fas fa-cog"></i>
+        <span>Settings</span>
+      </button>
+    </div>
+
+    <div class="tab-content active" id="playersTab">
+      <div class="players-grid" id="playersList">
+        <!-- Players will be added here -->
+      </div>
+    </div>
+
+    <div class="tab-content" id="myCardTab">
+      <div class="card-form">
+        <div class="input-group">
+          <label>Your Name</label>
+          <input type="text" id="playerName" class="rounded-input" placeholder="Enter your name">
+        </div>
         
-        <div id="matchResult" class="hidden draw-result">
-          <div class="assigned-person" id="assignedPerson">
-            Loading...
+        <div class="input-group">
+          <label>Your Wishlist</label>
+          <input type="text" id="wish1" class="rounded-input" placeholder="Most desired gift">
+          <input type="text" id="wish2" class="rounded-input" placeholder="Second choice">
+          <input type="text" id="wish3" class="rounded-input" placeholder="Third choice">
+        </div>
+
+        <button id="btnSaveWishlist" class="save-btn">
+          <i class="fas fa-save"></i>
+          Save Wishlist
+        </button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="settingsTab">
+      <div class="settings-container">
+        <div class="setting-card">
+          <h3>Game Settings</h3>
+          <div class="setting-item">
+            <span>Minimum Spend</span>
+            <strong>R<span id="minSpendValue">50</span></strong>
           </div>
-          <h3>Their Wishlist:</h3>
-          <ul id="assignedWishes" class="wish-list"></ul>
+          <div class="setting-item">
+            <span>Max Players</span>
+            <strong id="maxPlayersValue">10</strong>
+          </div>
+          <div class="setting-item">
+            <span>Gift Deadline</span>
+            <strong id="giftDeadlineValue">24 Dec 2023</strong>
+          </div>
+        </div>
+
+        <div id="adminControls" class="admin-controls hidden">
+          <button id="btnStartDraw" class="action-btn primary">
+            <i class="fas fa-random"></i>
+            Start Draw
+          </button>
+          <button id="btnEditSettings" class="action-btn secondary">
+            <i class="fas fa-edit"></i>
+            Edit Settings
+          </button>
         </div>
       </div>
     </div>
-    
-    <!-- Player Details Modal -->
-    <div id="playerModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title" id="playerModalTitle">Player Name</h3>
-          <button class="modal-close" id="btnCloseModal">
-            <i class="fas fa-times"></i>
-          </button>
+  </div>
+
+  <!-- Result Screen -->
+  <div id="resultScreen" class="screen">
+    <div class="screen-content">
+      <div class="result-header">
+        <div class="gift-icon">
+          <i class="fas fa-gift"></i>
         </div>
-        <div class="modal-body">
-          <h4>Wishlist:</h4>
-          <ul id="playerModalWishes" class="wish-list"></ul>
-        </div>
+        <h1>Your Secret Santa!</h1>
+        <p>The magic has happened! Here's who you'll be gifting:</p>
+      </div>
+
+      <div class="assigned-person">
+        <span id="assignedName">Loading...</span>
+      </div>
+
+      <div class="wishlist-section">
+        <h3>Their Wishlist</h3>
+        <ul id="assignedWishes" class="wishlist">
+          <!-- Wishes will be added here -->
+        </ul>
+      </div>
+
+      <div class="action-buttons">
+        <button id="btnBackToLobby" class="action-btn primary">
+          <i class="fas fa-arrow-left"></i>
+          Back to Lobby
+        </button>
       </div>
     </div>
-    
-    <!-- Menu Modal -->
-    <div id="menuModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title">Menu</h3>
-          <button class="modal-close" id="btnCloseMenu">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div class="modal-body">
-          <button id="btnLeaveLobby" class="btn btn-secondary" style="width: 100%; margin-bottom: 15px;">
-            <i class="fas fa-sign-out-alt"></i> Leave Lobby
-          </button>
-          <button id="btnAdminSettings" class="btn btn-primary hidden" style="width: 100%;">
-            <i class="fas fa-cog"></i> Admin Settings
-          </button>
-        </div>
+  </div>
+
+  <!-- Player Details Modal -->
+  <div id="playerModal" class="modal">
+    <div class="modal-content rounded-modal">
+      <div class="modal-header">
+        <h3 id="playerModalTitle">Player Details</h3>
+        <button id="btnCloseModal" class="close-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <h4>Wishlist</h4>
+        <ul id="playerModalWishes" class="wishlist">
+          <!-- Wishes will be added here -->
+        </ul>
       </div>
     </div>
   </div>
