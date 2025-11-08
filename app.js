@@ -1,11 +1,4 @@
-/*******************************
- * Secret Santa - app.js (CDN compat)
- *******************************/
-
-/* ========== Firebase config ==========
-   Replace with your Firebase config if different.
-   (This is the config you already provided.)
-=======================================*/
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBOlYzXVvUib58tv_hNMHlGSM2TmdLTZdE",
   authDomain: "secret-santa-cad9a.firebaseapp.com",
@@ -17,260 +10,651 @@ const firebaseConfig = {
   measurementId: "G-4C21F6SRCZ"
 };
 
-// init firebase (compat)
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* ========= DOM ========= */
-const $ = id => document.getElementById(id);
-const home = $('home');
-const lobby = $('lobby');
-const result = $('result');
+// DOM elements
+const homeScreen = document.getElementById('homeScreen');
+const lobbyScreen = document.getElementById('lobbyScreen');
+const resultScreen = document.getElementById('resultScreen');
 
-const btnCreate = $('btnCreate');
-const btnJoin = $('btnJoin');
-const btnBackHome = $('btnBackHome');
+const btnCreate = document.getElementById('btnCreate');
+const btnJoin = document.getElementById('btnJoin');
+const btnMenu = document.getElementById('btnMenu');
+const btnUser = document.getElementById('btnUser');
+const btnSaveWishlist = document.getElementById('btnSaveWishlist');
+const btnAddWish = document.getElementById('btnAddWish');
+const btnStartDraw = document.getElementById('btnStartDraw');
+const btnEditSettings = document.getElementById('btnEditSettings');
+const btnRevealMatch = document.getElementById('btnRevealMatch');
+const btnBackFromResult = document.getElementById('btnBackFromResult');
+const btnLeaveLobby = document.getElementById('btnLeaveLobby');
+const btnAdminSettings = document.getElementById('btnAdminSettings');
 
-const roomCodeEl = $('roomCode');
-const memberListEl = $('memberList');
+const playersList = document.getElementById('playersList');
+const playerModal = document.getElementById('playerModal');
+const menuModal = document.getElementById('menuModal');
+const btnCloseModal = document.getElementById('btnCloseModal');
+const btnCloseMenu = document.getElementById('btnCloseMenu');
 
-const joinName = $('joinName');
-const wish1 = $('wish1');
-const wish2 = $('wish2');
-const wish3 = $('wish3');
-const btnSubmitJoin = $('btnSubmitJoin');
+const playerModalTitle = document.getElementById('playerModalTitle');
+const playerModalWishes = document.getElementById('playerModalWishes');
+const assignedPerson = document.getElementById('assignedPerson');
+const assignedWishes = document.getElementById('assignedWishes');
+const matchResult = document.getElementById('matchResult');
+const adminSettings = document.getElementById('adminSettings');
 
-const ownerControls = $('ownerControls');
-const memberControls = $('memberControls');
-const mustJoinForm = $('mustJoinForm');
+const tabs = document.querySelectorAll('.tab');
+const tabContents = document.querySelectorAll('.tab-content');
+const navItems = document.querySelectorAll('.nav-item');
 
-const btnStart = $('btnStart');
-const btnCloseRoom = $('btnCloseRoom');
-const btnLeave = $('btnLeave');
-
-const assignedNameEl = $('assignedName');
-const assignedWishes = $('assignedWishes');
-const assignedNote = $('assignedNote');
-const btnDone = $('btnDone');
-const btnLeaveResult = $('btnLeaveResult');
-
-/* ========= App state ========= */
-let state = {
-  role: null,      // 'owner' or 'member'
+// Local state
+let local = {
+  role: null,
   room: null,
-  uid: null,
-  name: null
+  name: null,
+  myUid: null,
+  isOwner: false,
+  wishes: []
 };
 
-/* ========= Helpers ========= */
-function showScreen(screenEl){
-  [home, lobby, result].forEach(s => s.classList.add('hidden'));
-  screenEl.classList.remove('hidden');
+// Wish counter for dynamic wish inputs
+let wishCount = 3;
+
+// Initialize the app
+function init() {
+  setupEventListeners();
+  checkLocalStorage();
 }
 
-function makeCode(len=5){
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  let s="";
-  for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)];
-  return s;
+// Set up event listeners
+function setupEventListeners() {
+  // Navigation buttons
+  btnCreate.addEventListener('click', showCreateModal);
+  btnJoin.addEventListener('click', showJoinModal);
+  btnMenu.addEventListener('click', () => menuModal.classList.add('active'));
+  btnUser.addEventListener('click', switchToTab.bind(null, 'myCard'));
+  btnBackFromResult.addEventListener('click', () => showScreen(lobbyScreen));
+  btnRevealMatch.addEventListener('click', revealMatch);
+  
+  // Modal buttons
+  btnCloseModal.addEventListener('click', () => playerModal.classList.remove('active'));
+  btnCloseMenu.addEventListener('click', () => menuModal.classList.remove('active'));
+  btnLeaveLobby.addEventListener('click', leaveLobby);
+  btnAdminSettings.addEventListener('click', () => {
+    menuModal.classList.remove('active');
+    switchToTab('settings');
+  });
+  
+  // Wishlist buttons
+  btnSaveWishlist.addEventListener('click', saveWishlist);
+  btnAddWish.addEventListener('click', addWishInput);
+  
+  // Admin buttons
+  btnStartDraw.addEventListener('click', startDraw);
+  btnEditSettings.addEventListener('click', showEditSettingsModal);
+  
+  // Tab switching
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabName = tab.getAttribute('data-tab');
+      switchToTab(tabName);
+    });
+  });
+  
+  // Bottom navigation
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const tabName = item.getAttribute('data-tab');
+      switchToTab(tabName);
+    });
+  });
+  
+  // Close modals when clicking outside
+  window.addEventListener('click', (e) => {
+    if (e.target === playerModal) {
+      playerModal.classList.remove('active');
+    }
+    if (e.target === menuModal) {
+      menuModal.classList.remove('active');
+    }
+  });
 }
-function randomUid(){ return 'u'+Math.random().toString(36).slice(2,10); }
 
-/* ========== Persistence (localStorage) ========== */
-function saveLocal(){
-  if(!state.room || !state.uid) return;
-  localStorage.setItem('santa_room', state.room);
-  localStorage.setItem('santa_uid', state.uid);
-  localStorage.setItem('santa_role', state.role || '');
-  if(state.name) localStorage.setItem('santa_name', state.name);
+// Check localStorage for existing session
+function checkLocalStorage() {
+  const savedRoom = localStorage.getItem('santa_room');
+  const savedUid = localStorage.getItem('santa_uid');
+  const savedName = localStorage.getItem('santa_name');
+  const savedRole = localStorage.getItem('santa_role');
+  
+  if (savedRoom && savedUid) {
+    local.room = savedRoom;
+    local.myUid = savedUid;
+    local.name = savedName;
+    local.role = savedRole;
+    local.isOwner = savedRole === 'owner';
+    
+    // Try to rejoin the room
+    rejoinRoom();
+  } else {
+    showScreen(homeScreen);
+  }
 }
-function clearLocal(){
+
+// Save to localStorage
+function saveToLocalStorage() {
+  if (local.room) localStorage.setItem('santa_room', local.room);
+  if (local.myUid) localStorage.setItem('santa_uid', local.myUid);
+  if (local.name) localStorage.setItem('santa_name', local.name);
+  if (local.role) localStorage.setItem('santa_role', local.role);
+}
+
+// Clear localStorage
+function clearLocalStorage() {
   localStorage.removeItem('santa_room');
   localStorage.removeItem('santa_uid');
-  localStorage.removeItem('santa_role');
   localStorage.removeItem('santa_name');
-}
-function loadLocal(){
-  const room = localStorage.getItem('santa_room');
-  const uid = localStorage.getItem('santa_uid');
-  const role = localStorage.getItem('santa_role');
-  const name = localStorage.getItem('santa_name');
-  if(room && uid){
-    state.room = room;
-    state.uid = uid;
-    state.role = role || null;
-    state.name = name || null;
-    return true;
-  }
-  return false;
+  localStorage.removeItem('santa_role');
 }
 
-/* ========== Room listeners ========= */
-let membersRef = null;
-let roomRef = null;
-
-function listenRoom(room){
-  // cleanup previous
-  if(membersRef) membersRef.off();
-  if(roomRef) roomRef.off();
-
-  roomRef = db.ref('rooms/' + room);
-  membersRef = db.ref(`rooms/${room}/members`);
-
-  // member list
-  membersRef.on('value', snap => {
-    const val = snap.val() || {};
-    const arr = Object.entries(val).map(([uid,info]) => ({ uid, ...info }));
-    renderMembers(arr);
+// Show a specific screen
+function showScreen(screen) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.classList.add('right');
   });
+  
+  screen.classList.remove('right');
+  screen.classList.add('active');
+}
 
-  // assignments: detect drawStarted and assignment for this uid
-  roomRef.child('drawStarted').on('value', snap => {
-    const started = snap.exists() && snap.val() === true;
-    if(started){
-      // try to load assignment stored under assignments/<uid>
-      db.ref(`rooms/${room}/assignments/${state.uid}`).get().then(asg=>{
-        if(asg.exists()){
-          showResult(asg.val());
-        } else {
-          // fallback to assignedToUid on member node
-          db.ref(`rooms/${room}/members/${state.uid}/assignedToUid`).get().then(a=>{
-            if(a.exists()){
-              const toUid = a.val();
-              db.ref(`rooms/${room}/members/${toUid}`).get().then(ts=>{
-                if(ts.exists()) showResult({ name: ts.val().name, wishes: ts.val().wishes || [] });
-              });
-            }
-          });
-        }
-      });
+// Switch to a specific tab
+function switchToTab(tabName) {
+  // Update tabs
+  tabs.forEach(tab => {
+    if (tab.getAttribute('data-tab') === tabName) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
     }
-    // owner button state controlled in renderMembers
+  });
+  
+  // Update tab contents
+  tabContents.forEach(content => {
+    if (content.id === `${tabName}Tab`) {
+      content.classList.add('active');
+    } else {
+      content.classList.remove('active');
+    }
+  });
+  
+  // Update bottom navigation
+  navItems.forEach(item => {
+    if (item.getAttribute('data-tab') === tabName) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
   });
 }
 
-/* ========== Rendering ========== */
-function renderMembers(list){
-  memberListEl.innerHTML = '';
-  list.forEach(m=>{
-    const li = document.createElement('li');
-    li.textContent = m.name + (m.wishes ? ` — ${m.wishes.length} wishes` : '');
-    memberListEl.appendChild(li);
-  });
-
-  // show owner controls if owner
-  if(state.role === 'owner'){
-    mustJoinForm.classList.add('hidden');      // owner already has joined
-    ownerControls.classList.remove('hidden');
-    memberControls.classList.add('hidden');
-    // enable start when >=3
-    btnStart.disabled = !(list.length >= 3);
-  } else {
-    // member view
-    ownerControls.classList.add('hidden');
-    memberControls.classList.remove('hidden');
-    // hide join form if already joined
-    const joined = list.some(m => m.name === state.name && state.uid);
-    if(joined) mustJoinForm.classList.add('hidden');
-    else mustJoinForm.classList.remove('hidden');
+// Show create modal (simplified for this example)
+function showCreateModal() {
+  const name = prompt("Enter your name:");
+  if (!name) return;
+  
+  const wish1 = prompt("Enter your most desired gift:");
+  const wish2 = prompt("Enter your second choice:");
+  const wish3 = prompt("Enter your third choice:");
+  
+  if (!wish1 || !wish2 || !wish3) {
+    alert("Please enter all three wishes");
+    return;
   }
-  // keep room code updated
-  roomCodeEl.textContent = state.room || '—';
+  
+  createLobby(name, [wish1, wish2, wish3]);
 }
 
-/* ========== Flows ========== */
+// Show join modal (simplified for this example)
+function showJoinModal() {
+  const code = prompt("Enter lobby code:");
+  if (!code) return;
+  
+  const name = prompt("Enter your name:");
+  if (!name) return;
+  
+  const wish1 = prompt("Enter your most desired gift:");
+  const wish2 = prompt("Enter your second choice:");
+  const wish3 = prompt("Enter your third choice:");
+  
+  if (!wish1 || !wish2 || !wish3) {
+    alert("Please enter all three wishes");
+    return;
+  }
+  
+  joinLobby(code, name, [wish1, wish2, wish3]);
+}
 
-/* create room -> then owner should fill in their name/wishes and join */
-btnCreate.addEventListener('click', async ()=>{
+// Create a lobby
+async function createLobby(name, wishes) {
+  // Generate room code
   const code = makeCode(5);
-  const roomRefLocal = db.ref('rooms/' + code);
-  const s = await roomRefLocal.get();
-  if(s.exists()) return btnCreate.click();
-  await roomRefLocal.set({ owner: "owner", createdAt: Date.now(), drawStarted: false });
-  state.role = 'owner';
-  state.room = code;
-  state.uid = randomUid();
-  // Save then open lobby and let owner fill details
-  saveLocal();
-  listenRoom(state.room);
-  showScreen(lobby);
-  roomCodeEl.textContent = state.room;
-  // owner needs to still 'join' as a member (but we will hide the join form automatically if owner)
-  mustJoinForm.classList.remove('hidden');
-});
+  const roomRef = db.ref('rooms/' + code);
+  const snapshot = await roomRef.get();
+  
+  if (snapshot.exists()) {
+    // If room exists, try again
+    return createLobby(name, wishes);
+  }
+  
+  // Create room
+  await roomRef.set({
+    owner: name,
+    minSpend: 50,
+    maxPlayers: 10,
+    giftDeadline: '2023-12-24',
+    createdAt: Date.now(),
+    drawStarted: false
+  });
+  
+  // Set local state
+  local.role = 'owner';
+  local.room = code;
+  local.name = name;
+  local.myUid = 'owner_' + Date.now();
+  local.isOwner = true;
+  local.wishes = wishes;
+  
+  // Join as owner
+  await joinRoom(code, true, { name, wishes });
+  
+  showToast('Lobby created successfully!');
+}
 
-/* join button from home simply shows lobby with join form */
-btnJoin.addEventListener('click', ()=>{
-  // show blank join for user to input code first (we'll ask in-place)
-  // Prompt for room code quickly with a browser prompt for simplicity
-  const code = prompt('Enter room code (from the host):') || '';
-  if(!code) return;
-  state.room = code.trim().toUpperCase();
-  state.uid = randomUid();
-  state.role = 'member';
-  saveLocal();
-  listenRoom(state.room);
-  showScreen(lobby);
-  roomCodeEl.textContent = state.room;
-  mustJoinForm.classList.remove('hidden');
-});
+// Join a lobby
+async function joinLobby(code, name, wishes) {
+  // Check if room exists
+  const roomRef = db.ref('rooms/' + code);
+  const snap = await roomRef.get();
+  
+  if (!snap.exists()) {
+    alert('Room not found. Check the code.');
+    return;
+  }
+  
+  // Check if draw has already started
+  const roomData = snap.val();
+  if (roomData.drawStarted) {
+    alert('The draw has already started in this room');
+    return;
+  }
+  
+  // Set local state
+  local.role = 'member';
+  local.room = code;
+  local.name = name;
+  local.myUid = 'member_' + Date.now();
+  local.isOwner = false;
+  local.wishes = wishes;
+  
+  // Join room
+  await joinRoom(code, false, { name, wishes });
+  
+  showToast('Joined lobby successfully!');
+}
 
-/* Back home from lobby: clear local only if not joined */
-btnBackHome.addEventListener('click', ()=>{
-  // if joined, keep localStorage; simply show home to allow navigation
-  showScreen(home);
-});
-
-/* Submit join (both owner and member use same form) */
-btnSubmitJoin.addEventListener('click', async ()=>{
-  const name = joinName.value.trim();
-  const w1 = wish1.value.trim();
-  const w2 = wish2.value.trim();
-  const w3 = wish3.value.trim();
-  if(!state.room) return alert('No room selected.');
-  if(!name || !w1 || !w2 || !w3) return alert('Please enter name and three wishes.');
-
-  state.name = name;
-  saveLocal();
-
-  // write member node
-  if(!state.uid) state.uid = randomUid();
-  await db.ref(`rooms/${state.room}/members/${state.uid}`).set({
-    name,
-    wishes: [w1,w2,w3],
+// Join room function
+async function joinRoom(room, asOwner = false, payload) {
+  const memberRef = db.ref(`rooms/${room}/members/${local.myUid}`);
+  
+  await memberRef.set({
+    name: payload.name,
+    wishes: payload.wishes,
     joinedAt: Date.now()
   });
-
-  // if owner, set owner field
-  if(state.role === 'owner') {
-    await db.ref(`rooms/${state.room}/owner`).set(name);
+  
+  // Save to localStorage
+  saveToLocalStorage();
+  
+  // Update UI
+  document.getElementById('lobbyTitle').textContent = `Lobby: ${room}`;
+  document.getElementById('userNameResult').textContent = payload.name;
+  
+  // Show admin controls if owner
+  if (asOwner) {
+    adminSettings.classList.remove('hidden');
+    btnAdminSettings.classList.remove('hidden');
   }
+  
+  // Populate user data
+  document.getElementById('playerName').value = payload.name;
+  document.getElementById('wish1').value = payload.wishes[0] || '';
+  document.getElementById('wish2').value = payload.wishes[1] || '';
+  document.getElementById('wish3').value = payload.wishes[2] || '';
+  
+  // Start listening to room updates
+  listenRoom(room);
+  
+  // Show lobby screen
+  showScreen(lobbyScreen);
+}
 
-  // update UI
-  mustJoinForm.classList.add('hidden');
-  memberControls.classList.remove('hidden');
-  ownerControls.classList.remove('hidden');
-});
+// Rejoin room
+async function rejoinRoom() {
+  const roomRef = db.ref('rooms/' + local.room);
+  const snap = await roomRef.get();
+  
+  if (!snap.exists()) {
+    showToast('The room no longer exists');
+    clearLocalStorage();
+    showScreen(homeScreen);
+    return;
+  }
+  
+  const roomData = snap.val();
+  
+  // Check if user is still in the room
+  const memberRef = db.ref(`rooms/${local.room}/members/${local.myUid}`);
+  const memberSnap = await memberRef.get();
+  
+  if (!memberSnap.exists()) {
+    showToast('You are no longer in this room');
+    clearLocalStorage();
+    showScreen(homeScreen);
+    return;
+  }
+  
+  // Get user's wishes
+  const memberData = memberSnap.val();
+  local.wishes = memberData.wishes || [];
+  
+  // Update UI
+  document.getElementById('lobbyTitle').textContent = `Lobby: ${local.room}`;
+  document.getElementById('userNameResult').textContent = local.name;
+  
+  // Show admin controls if owner
+  if (local.isOwner) {
+    adminSettings.classList.remove('hidden');
+    btnAdminSettings.classList.remove('hidden');
+  }
+  
+  // Populate user data
+  document.getElementById('playerName').value = local.name;
+  document.getElementById('wish1').value = local.wishes[0] || '';
+  document.getElementById('wish2').value = local.wishes[1] || '';
+  document.getElementById('wish3').value = local.wishes[2] || '';
+  
+  // Update settings display
+  document.getElementById('minSpendValue').textContent = roomData.minSpend || 50;
+  document.getElementById('maxPlayersValue').textContent = roomData.maxPlayers || 10;
+  
+  if (roomData.giftDeadline) {
+    document.getElementById('giftDeadlineValue').textContent = new Date(roomData.giftDeadline).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+  
+  // Start listening to room updates
+  listenRoom(local.room);
+  
+  // Show appropriate screen
+  if (roomData.drawStarted) {
+    showScreen(resultScreen);
+  } else {
+    showScreen(lobbyScreen);
+  }
+}
 
-/* Start draw (owner only) */
-btnStart.addEventListener('click', async ()=>{
-  if(state.role !== 'owner') return alert('Only owner can start.');
-  const room = state.room;
+// Listen for room updates
+function listenRoom(room) {
+  const membersRef = db.ref(`rooms/${room}/members`);
+  const roomRef = db.ref('rooms/' + room);
+  
+  membersRef.on('value', snap => {
+    const members = snap.val() || {};
+    const membersArr = Object.entries(members).map(([uid, info]) => ({ uid, ...info }));
+    
+    renderPlayerList(membersArr);
+    
+    // Check if current user is still in the room
+    if (!members[local.myUid]) {
+      // User was kicked or removed
+      showToast('You have been removed from the lobby');
+      clearLocalStorage();
+      showScreen(homeScreen);
+      return;
+    }
+    
+    // Update local wishes if they changed
+    if (members[local.myUid].wishes) {
+      local.wishes = members[local.myUid].wishes;
+    }
+  });
+  
+  roomRef.on('value', snap => {
+    const roomData = snap.val();
+    if (!roomData) {
+      // Room was deleted (admin left)
+      showToast('The lobby has been terminated');
+      clearLocalStorage();
+      showScreen(homeScreen);
+      return;
+    }
+    
+    // Update settings display
+    document.getElementById('minSpendValue').textContent = roomData.minSpend || 50;
+    document.getElementById('maxPlayersValue').textContent = roomData.maxPlayers || 10;
+    
+    if (roomData.giftDeadline) {
+      document.getElementById('giftDeadlineValue').textContent = new Date(roomData.giftDeadline).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    
+    // Check if draw has started
+    if (roomData.drawStarted) {
+      showScreen(resultScreen);
+    }
+  });
+}
+
+// Render player list
+function renderPlayerList(players) {
+  playersList.innerHTML = '';
+  
+  players.forEach(player => {
+    const playerCard = document.createElement('div');
+    playerCard.className = 'player-card';
+    
+    // Check if this player is assigned to the current user
+    if (player.assignedToUid === local.myUid) {
+      playerCard.classList.add('assigned');
+    }
+    
+    playerCard.innerHTML = `
+      <div class="player-name">
+        ${player.name}
+        ${local.isOwner && player.uid !== local.myUid ? `<button class="kick-button" data-uid="${player.uid}">
+          <i class="fas fa-times"></i>
+        </button>` : ''}
+      </div>
+      ${player.wishes && player.wishes.length > 0 ? `
+        <div class="player-wish">
+          <i class="fas fa-gift"></i>
+          ${player.wishes[0]}
+        </div>
+      ` : ''}
+    `;
+    
+    // Add click event to show player details
+    playerCard.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('kick-button')) {
+        showPlayerDetails(player);
+      }
+    });
+    
+    // Add kick button event if it exists
+    const kickBtn = playerCard.querySelector('.kick-button');
+    if (kickBtn) {
+      kickBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        kickPlayer(player.uid);
+      });
+    }
+    
+    playersList.appendChild(playerCard);
+  });
+}
+
+// Show player details in modal
+function showPlayerDetails(player) {
+  playerModalTitle.textContent = player.name;
+  playerModalWishes.innerHTML = '';
+  
+  if (player.wishes && player.wishes.length > 0) {
+    player.wishes.forEach(wish => {
+      const li = document.createElement('li');
+      li.textContent = wish;
+      playerModalWishes.appendChild(li);
+    });
+  } else {
+    const li = document.createElement('li');
+    li.textContent = 'No wishes listed';
+    playerModalWishes.appendChild(li);
+  }
+  
+  playerModal.classList.add('active');
+}
+
+// Kick a player
+async function kickPlayer(uid) {
+  if (!local.isOwner) return;
+  
+  if (confirm('Are you sure you want to kick this player?')) {
+    await db.ref(`rooms/${local.room}/members/${uid}`).remove();
+    showToast('Player kicked');
+  }
+}
+
+// Add wish input field
+function addWishInput() {
+  wishCount++;
+  const wishInputs = document.querySelector('.wishlist-form .form-group:nth-child(2)');
+  const newInput = document.createElement('input');
+  newInput.type = 'text';
+  newInput.id = `wish${wishCount}`;
+  newInput.className = 'form-input';
+  newInput.placeholder = `Wish ${wishCount}`;
+  wishInputs.appendChild(newInput);
+}
+
+// Save wishlist
+async function saveWishlist() {
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) {
+    alert('Please enter your name');
+    return;
+  }
+  
+  // Collect wishes
+  const wishes = [];
+  for (let i = 1; i <= wishCount; i++) {
+    const wishInput = document.getElementById(`wish${i}`);
+    if (wishInput) {
+      const wish = wishInput.value.trim();
+      if (wish) wishes.push(wish);
+    }
+  }
+  
+  if (wishes.length < 3) {
+    alert('Please enter at least 3 wishes');
+    return;
+  }
+  
+  // Update in Firebase
+  await db.ref(`rooms/${local.room}/members/${local.myUid}`).update({
+    name: name,
+    wishes: wishes
+  });
+  
+  // Update local state
+  local.name = name;
+  local.wishes = wishes;
+  
+  showToast('Wishlist updated successfully!');
+}
+
+// Show edit settings modal (simplified for this example)
+function showEditSettingsModal() {
+  const minSpend = prompt('Enter minimum spend (R):', document.getElementById('minSpendValue').textContent);
+  if (!minSpend) return;
+  
+  const maxPlayers = prompt('Enter maximum players:', document.getElementById('maxPlayersValue').textContent);
+  if (!maxPlayers) return;
+  
+  const giftDeadline = prompt('Enter gift deadline (YYYY-MM-DD):', '2023-12-24');
+  if (!giftDeadline) return;
+  
+  saveAdminSettings(parseInt(minSpend), parseInt(maxPlayers), giftDeadline);
+}
+
+// Save admin settings
+async function saveAdminSettings(minSpend, maxPlayers, giftDeadline) {
+  if (!local.isOwner) return;
+  
+  await db.ref(`rooms/${local.room}`).update({
+    minSpend: minSpend,
+    maxPlayers: maxPlayers,
+    giftDeadline: giftDeadline
+  });
+  
+  showToast('Settings updated successfully!');
+}
+
+// Start the draw
+async function startDraw() {
+  if (!local.isOwner) return;
+  
+  const room = local.room;
   const membersSnap = await db.ref(`rooms/${room}/members`).get();
   const members = membersSnap.val();
-  if(!members) return alert('No members.');
-  const entries = Object.entries(members).map(([uid,info])=>({ uid, name: info.name, wishes: info.wishes || [] }));
-  if(entries.length < 3) return alert('Need at least 3 members.');
-
-  const uids = entries.map(e=>e.uid);
+  
+  if (!members) {
+    showToast('No members found');
+    return;
+  }
+  
+  const entries = Object.entries(members).map(([uid, info]) => ({ 
+    uid, 
+    name: info.name, 
+    wishes: info.wishes || [] 
+  }));
+  
+  if (entries.length < 3) {
+    showToast('Need at least 3 players to start the draw');
+    return;
+  }
+  
+  const uids = entries.map(e => e.uid);
   const assigned = derangement(uids);
-  if(!assigned) return alert('Assignment failed, try again.');
-
+  
+  if (!assigned) {
+    showToast('Could not create assignments. Try again.');
+    return;
+  }
+  
   const updates = {};
-  for(let i=0;i<uids.length;i++){
+  for (let i = 0; i < uids.length; i++) {
     const from = uids[i];
     const to = assigned[i];
-    const target = entries.find(x=>x.uid===to);
+    const target = entries.find(e => e.uid === to);
+    
     updates[`rooms/${room}/members/${from}/assignedToUid`] = to;
     updates[`rooms/${room}/assignments/${from}`] = {
       toUid: to,
@@ -278,115 +662,134 @@ btnStart.addEventListener('click', async ()=>{
       wishes: target.wishes || []
     };
   }
+  
   updates[`rooms/${room}/drawStarted`] = true;
+  
   await db.ref().update(updates);
-  alert('Draw finished — each person can now see their assigned person.');
-});
+  showToast('Draw completed!');
+}
 
-/* Close room (owner) */
-btnCloseRoom.addEventListener('click', async ()=>{
-  if(state.role !== 'owner') return;
-  if(!state.room) return;
-  if(!confirm('Close this room and remove data? This cannot be undone.')) return;
-  await db.ref(`rooms/${state.room}`).remove();
-  clearLocal();
-  state = { role:null, room:null, uid:null, name:null };
-  showScreen(home);
-});
-
-/* Member leave */
-btnLeave.addEventListener('click', async ()=>{
-  if(!state.room || !state.uid) return showScreen(home);
-  await db.ref(`rooms/${state.room}/members/${state.uid}`).remove();
-  clearLocal();
-  state = { role:null, room:null, uid:null, name:null };
-  showScreen(home);
-});
-
-/* Result screen leave/done */
-btnDone.addEventListener('click', ()=>{
-  showScreen(home);
-});
-btnLeaveResult.addEventListener('click', async ()=>{
-  // same as leave
-  if(state.room && state.uid) await db.ref(`rooms/${state.room}/members/${state.uid}`).remove();
-  clearLocal();
-  state = { role:null, room:null, uid:null, name:null };
-  showScreen(home);
-});
-
-/* ========== Auto rejoin on load ========== */
-window.addEventListener('load', async ()=>{
-  // wire up ownerControls element (exists but hidden initial)
-  ownerControls.classList.add('hidden');
-  memberControls.classList.add('hidden');
-
-  // try load local
-  const ok = loadLocal();
-  if(ok && state.room && state.uid){
-    // check room exists
-    const r = await db.ref(`rooms/${state.room}`).get();
-    if(r.exists()){
-      // ensure listener installed and show lobby
-      listenRoom(state.room);
-      showScreen(lobby);
-      roomCodeEl.textContent = state.room;
-      // if user is member and assignments already exist, show result immediately
-      const draw = await db.ref(`rooms/${state.room}/drawStarted`).get();
-      if(draw.exists() && draw.val() === true){
-        // read assignment
-        const a = await db.ref(`rooms/${state.room}/assignments/${state.uid}`).get();
-        if(a.exists()){
-          showResult(a.val());
-          return;
-        }
-        const a2 = await db.ref(`rooms/${state.room}/members/${state.uid}/assignedToUid`).get();
-        if(a2.exists()){
-          const toUid = a2.val();
-          const ts = await db.ref(`rooms/${state.room}/members/${toUid}`).get();
-          if(ts.exists()) showResult({ name: ts.val().name, wishes: ts.val().wishes || [] });
-          return;
-        }
-      }
-      // else stay in lobby
-      return;
+// Reveal match
+async function revealMatch() {
+  const assignmentRef = db.ref(`rooms/${local.room}/assignments/${local.myUid}`);
+  const assignmentSnap = await assignmentRef.get();
+  
+  if (assignmentSnap.exists()) {
+    const assignment = assignmentSnap.val();
+    
+    assignedPerson.textContent = assignment.name;
+    assignedWishes.innerHTML = '';
+    
+    if (assignment.wishes && assignment.wishes.length > 0) {
+      assignment.wishes.forEach(wish => {
+        const li = document.createElement('li');
+        li.textContent = wish;
+        assignedWishes.appendChild(li);
+      });
     } else {
-      // room not found -> clear and go home
-      clearLocal();
-      state = { role:null, room:null, uid:null, name:null };
+      const li = document.createElement('li');
+      li.textContent = 'No wishes listed';
+      assignedWishes.appendChild(li);
     }
+    
+    matchResult.classList.remove('hidden');
+    btnRevealMatch.style.display = 'none';
   }
-  showScreen(home);
-});
+}
 
-/* ========== Derangement (no self assignment) ========== */
-function derangement(uids){
-  function shuffle(a){
-    for(let i=a.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [a[i],a[j]]=[a[j],a[i]];
+// Leave the lobby
+async function leaveLobby() {
+  // Check if draw has started
+  const roomRef = db.ref('rooms/' + local.room);
+  const roomSnap = await roomRef.get();
+  const roomData = roomSnap.val();
+  
+  if (roomData.drawStarted && !local.isOwner) {
+    showToast('Cannot leave after the draw has started');
+    return;
+  }
+  
+  if (local.room && local.myUid) {
+    // Remove user from members list
+    await db.ref(`rooms/${local.room}/members/${local.myUid}`).remove();
+    
+    // If owner leaves, delete the room
+    if (local.isOwner) {
+      await db.ref(`rooms/${local.room}`).remove();
     }
   }
-  const max=500;
-  for(let t=0;t<max;t++){
+  
+  // Clear local state
+  local = {
+    role: null,
+    room: null,
+    name: null,
+    myUid: null,
+    isOwner: false,
+    wishes: []
+  };
+  
+  clearLocalStorage();
+  
+  // Reset UI
+  adminSettings.classList.add('hidden');
+  btnAdminSettings.classList.add('hidden');
+  matchResult.classList.add('hidden');
+  btnRevealMatch.style.display = 'block';
+  
+  showScreen(homeScreen);
+  showToast('Left the lobby');
+}
+
+// Utility function to generate room code
+function makeCode(len = 5) {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < len; i++) {
+    s += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return s;
+}
+
+// Derangement algorithm for Secret Santa assignment
+function derangement(uids) {
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  
+  for (let t = 0; t < 200; t++) {
     const copy = uids.slice();
     shuffle(copy);
-    if(uids.every((u,i)=>u!==copy[i])) return copy;
+    if (uids.every((u, i) => u !== copy[i])) return copy;
   }
   return null;
 }
 
-/* ========== Show result UI ========== */
-function showResult(obj){
-  showScreen(result);
-  assignedNameEl.textContent = obj.name || '—';
-  assignedWishes.innerHTML = '';
-  if(Array.isArray(obj.wishes)){
-    obj.wishes.forEach(w=>{
-      const li = document.createElement('li');
-      li.textContent = w;
-      assignedWishes.appendChild(li);
-    });
-  }
-  assignedNote.textContent = "Saved to your device — come back anytime to view.";
+// Show toast notification
+function showToast(message) {
+  // Create a simple toast notification
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.position = 'fixed';
+  toast.style.bottom = '20px';
+  toast.style.left = '50%';
+  toast.style.transform = 'translateX(-50%)';
+  toast.style.backgroundColor = 'var(--primary)';
+  toast.style.color = 'white';
+  toast.style.padding = '12px 20px';
+  toast.style.borderRadius = '8px';
+  toast.style.zIndex = '1000';
+  toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    document.body.removeChild(toast);
+  }, 3000);
 }
+
+// Initialize the app
+init();
