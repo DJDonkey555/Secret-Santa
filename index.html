@@ -31,7 +31,7 @@
       </div>
 
       <div class="app-footer">
-        <p>Get ready for some gift-giving fun! 🎄</p>
+        <p>Create or join a Secret Santa lobby to get started! 🎄</p>
       </div>
     </div>
   </div>
@@ -41,6 +41,7 @@
     <div class="screen-header">
       <button class="back-btn" onclick="showScreen(homeScreen)">
         <i class="fas fa-arrow-left"></i>
+        <span>Back</span>
       </button>
       <h2>Create Lobby</h2>
       <div class="header-spacer"></div>
@@ -55,9 +56,15 @@
 
         <div class="input-group">
           <label>Your Wishlist</label>
-          <input type="text" id="createWish1" class="form-input" placeholder="🎁 Most wanted gift">
-          <input type="text" id="createWish2" class="form-input" placeholder="🎁 Second choice">
-          <input type="text" id="createWish3" class="form-input" placeholder="🎁 Third choice">
+          <div class="wish-input-group">
+            <input type="text" id="createWish1" class="form-input" placeholder="🎁 Most wanted gift">
+          </div>
+          <div class="wish-input-group">
+            <input type="text" id="createWish2" class="form-input" placeholder="🎁 Second choice">
+          </div>
+          <div class="wish-input-group">
+            <input type="text" id="createWish3" class="form-input" placeholder="🎁 Third choice">
+          </div>
           <button id="btnAddWish" class="add-more-btn">
             <i class="fas fa-plus"></i> Add more wishes
           </button>
@@ -75,7 +82,7 @@
               <input type="number" id="maxPlayers" class="form-input small" value="10" min="3" max="20">
             </div>
           </div>
-          <input type="date" id="giftDeadline" class="form-input" placeholder="Gift deadline">
+          <input type="date" id="giftDeadline" class="form-input" placeholder="Gift deadline" value="2023-12-24">
         </div>
 
         <div class="form-actions">
@@ -93,6 +100,7 @@
     <div class="screen-header">
       <button class="back-btn" onclick="showScreen(homeScreen)">
         <i class="fas fa-arrow-left"></i>
+        <span>Back</span>
       </button>
       <h2>Join Lobby</h2>
       <div class="header-spacer"></div>
@@ -112,9 +120,15 @@
 
         <div class="input-group">
           <label>Your Wishlist</label>
-          <input type="text" id="joinWish1" class="form-input" placeholder="🎁 Most wanted gift">
-          <input type="text" id="joinWish2" class="form-input" placeholder="🎁 Second choice">
-          <input type="text" id="joinWish3" class="form-input" placeholder="🎁 Third choice">
+          <div class="wish-input-group">
+            <input type="text" id="joinWish1" class="form-input" placeholder="🎁 Most wanted gift">
+          </div>
+          <div class="wish-input-group">
+            <input type="text" id="joinWish2" class="form-input" placeholder="🎁 Second choice">
+          </div>
+          <div class="wish-input-group">
+            <input type="text" id="joinWish3" class="form-input" placeholder="🎁 Third choice">
+          </div>
           <button id="btnAddWishJoin" class="add-more-btn">
             <i class="fas fa-plus"></i> Add more wishes
           </button>
@@ -134,7 +148,8 @@
   <div id="lobbyScreen" class="screen">
     <div class="screen-header">
       <button class="back-btn" onclick="leaveLobby()">
-        <i class="fas fa-arrow-left"></i>
+        <i class="fas fa-sign-out-alt"></i>
+        <span>Leave</span>
       </button>
       <h2 id="lobbyTitle">Lobby</h2>
       <div class="header-actions">
@@ -187,9 +202,15 @@
           <div class="input-group">
             <label>Your Wishlist</label>
             <div id="editWishInputs">
-              <input type="text" id="editWish1" class="form-input" placeholder="🎁 Most wanted gift">
-              <input type="text" id="editWish2" class="form-input" placeholder="🎁 Second choice">
-              <input type="text" id="editWish3" class="form-input" placeholder="🎁 Third choice">
+              <div class="wish-input-group">
+                <input type="text" id="editWish1" class="form-input" placeholder="🎁 Most wanted gift">
+              </div>
+              <div class="wish-input-group">
+                <input type="text" id="editWish2" class="form-input" placeholder="🎁 Second choice">
+              </div>
+              <div class="wish-input-group">
+                <input type="text" id="editWish3" class="form-input" placeholder="🎁 Third choice">
+              </div>
             </div>
             <button id="btnAddEditWish" class="add-more-btn">
               <i class="fas fa-plus"></i> Add more wishes
@@ -321,6 +342,30 @@
           <i class="fas fa-sign-out-alt"></i>
           Leave Lobby
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Player Details Modal -->
+  <div id="playerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Player Details</h3>
+        <button class="close-btn" onclick="closeModal('playerModal')">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="player-details">
+          <div class="player-icon" id="playerModalIcon">🎅</div>
+          <h4 id="playerModalName">Player Name</h4>
+          <div class="wishlist-section">
+            <h5>Wishlist</h5>
+            <div class="wishlist" id="playerModalWishes">
+              <!-- Wishes will be added here -->
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
