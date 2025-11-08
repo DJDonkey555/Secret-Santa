@@ -71,23 +71,6 @@ const festiveIcons = ['🎅', '🤶', '🦌', '🎄', '⭐', '🎁', '🔔', '�
 function init() {
   setupEventListeners();
   checkLocalStorage();
-  preventPullToRefresh();
-}
-
-// Prevent pull-to-refresh on mobile
-function preventPullToRefresh() {
-  let startY;
-  document.addEventListener('touchstart', e => {
-    startY = e.touches[0].clientY;
-  }, { passive: true });
-  
-  document.addEventListener('touchmove', e => {
-    const y = e.touches[0].clientY;
-    // If scrolling up or at the top, allow it
-    if (window.scrollY === 0 && y > startY) {
-      e.preventDefault();
-    }
-  }, { passive: false });
 }
 
 // Set up event listeners
