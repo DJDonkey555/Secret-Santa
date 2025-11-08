@@ -8,167 +8,302 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Home Screen -->
-  <div id="homeScreen" class="screen active">
-    <div class="screen-content">
-      <div class="logo-container">
-        <div class="logo">
-          <i class="fas fa-gift"></i>
-        </div>
-        <h1>Secret Santa</h1>
-        <p class="tagline">Spread joy with your colleagues!</p>
-      </div>
-
-      <div class="action-buttons">
-        <button id="btnCreate" class="action-btn primary">
-          <i class="fas fa-plus"></i>
-          <span>Create Lobby</span>
-        </button>
-        <button id="btnJoin" class="action-btn secondary">
-          <i class="fas fa-sign-in-alt"></i>
-          <span>Join Lobby</span>
-        </button>
-      </div>
-
-      <div class="festive-elements">
-        <div class="ornament red"></div>
-        <div class="ornament green"></div>
-        <div class="ornament gold"></div>
-      </div>
+  <!-- Snowflakes -->
+  <div id="snowflakes"></div>
+  
+  <!-- Gift animation -->
+  <div id="giftAnimation" class="gift-animation hidden">
+    <div class="gift-box">
+      <div class="gift-lid"></div>
+      <div class="gift-body"></div>
+    </div>
+    <div class="gift-message">
+      <h2>You got <span id="giftedPerson"></span>!</h2>
     </div>
   </div>
-
-  <!-- Lobby Screen -->
-  <div id="lobbyScreen" class="screen">
-    <div class="header">
-      <button id="btnBack" class="header-btn">
-        <i class="fas fa-arrow-left"></i>
-      </button>
-      <h1 id="lobbyTitle">Lobby</h1>
-      <button class="header-btn" id="btnUser">
-        <i class="fas fa-user"></i>
-      </button>
-    </div>
-
-    <div class="tabs">
-      <button class="tab active" data-tab="players">
-        <i class="fas fa-users"></i>
-        <span>Players</span>
-      </button>
-      <button class="tab" data-tab="myCard">
-        <i class="fas fa-address-card"></i>
-        <span>My Card</span>
-      </button>
-      <button class="tab" data-tab="settings">
-        <i class="fas fa-cog"></i>
-        <span>Settings</span>
-      </button>
-    </div>
-
-    <div class="tab-content active" id="playersTab">
-      <div class="players-grid" id="playersList">
-        <!-- Players will be added here -->
+  
+  <!-- Toast notification -->
+  <div id="toast" class="toast"></div>
+  
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h1><i class="fas fa-gift"></i> Secret Santa</h1>
+        <div class="santa-hat">
+          <i class="fas fa-hat-cowboy"></i>
+        </div>
       </div>
-    </div>
-
-    <div class="tab-content" id="myCardTab">
-      <div class="card-form">
-        <div class="input-group">
-          <label>Your Name</label>
-          <input type="text" id="playerName" class="rounded-input" placeholder="Enter your name">
+      
+      <div class="sidebar-content">
+        <!-- Home screen buttons -->
+        <div id="homeButtons" class="sidebar-buttons">
+          <button id="btnCreate" class="sidebar-button">
+            <i class="fas fa-plus-circle"></i> Create Lobby
+          </button>
+          <button id="btnJoin" class="sidebar-button">
+            <i class="fas fa-sign-in-alt"></i> Join Lobby
+          </button>
         </div>
         
-        <div class="input-group">
-          <label>Your Wishlist</label>
-          <input type="text" id="wish1" class="rounded-input" placeholder="Most desired gift">
-          <input type="text" id="wish2" class="rounded-input" placeholder="Second choice">
-          <input type="text" id="wish3" class="rounded-input" placeholder="Third choice">
+        <!-- Player list in lobby -->
+        <div id="playerListContainer" class="player-list hidden">
+          <h3><i class="fas fa-users"></i> Players in Lobby</h3>
+          <div id="playerList"></div>
         </div>
-
-        <button id="btnSaveWishlist" class="save-btn">
-          <i class="fas fa-save"></i>
-          Save Wishlist
-        </button>
-      </div>
-    </div>
-
-    <div class="tab-content" id="settingsTab">
-      <div class="settings-container">
-        <div class="setting-card">
-          <h3>Game Settings</h3>
-          <div class="setting-item">
-            <span>Minimum Spend</span>
-            <strong>R<span id="minSpendValue">50</span></strong>
-          </div>
-          <div class="setting-item">
-            <span>Max Players</span>
-            <strong id="maxPlayersValue">10</strong>
-          </div>
-          <div class="setting-item">
-            <span>Gift Deadline</span>
-            <strong id="giftDeadlineValue">24 Dec 2023</strong>
-          </div>
-        </div>
-
-        <div id="adminControls" class="admin-controls hidden">
-          <button id="btnStartDraw" class="action-btn primary">
-            <i class="fas fa-random"></i>
-            Start Draw
+        
+        <!-- Lobby controls -->
+        <div id="lobbyControls" class="sidebar-footer hidden">
+          <button id="btnStartDraw" class="sidebar-button">
+            <i class="fas fa-random"></i> Start Draw
           </button>
-          <button id="btnEditSettings" class="action-btn secondary">
-            <i class="fas fa-edit"></i>
-            Edit Settings
+          <button id="btnLeave" class="sidebar-button btn-danger">
+            <i class="fas fa-sign-out-alt"></i> Leave Lobby
           </button>
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Result Screen -->
-  <div id="resultScreen" class="screen">
-    <div class="screen-content">
-      <div class="result-header">
-        <div class="gift-icon">
-          <i class="fas fa-gift"></i>
+    
+    <!-- Main content -->
+    <div class="main-content">
+      <!-- Home screen -->
+      <div id="homeScreen">
+        <div class="content-card">
+          <div class="welcome-header">
+            <h2>Welcome to Secret Santa!</h2>
+            <div class="sleigh">
+              <i class="fas fa-sleigh"></i>
+            </div>
+          </div>
+          <p style="text-align: center; margin-bottom: 20px; color: #666;">
+            Create or join a lobby to start your Secret Santa gift exchange
+          </p>
+          <div class="festive-elements">
+            <div class="ornament red"></div>
+            <div class="ornament green"></div>
+            <div class="ornament gold"></div>
+          </div>
         </div>
-        <h1>Your Secret Santa!</h1>
-        <p>The magic has happened! Here's who you'll be gifting:</p>
       </div>
-
-      <div class="assigned-person">
-        <span id="assignedName">Loading...</span>
+      
+      <!-- Create lobby screen -->
+      <div id="createScreen" class="hidden">
+        <div class="content-card">
+          <h2><i class="fas fa-plus-circle"></i> Create a Lobby</h2>
+          <div class="form-group">
+            <label for="createName">Your Name</label>
+            <input type="text" id="createName" class="form-control" placeholder="Enter your name">
+          </div>
+          
+          <div class="form-group">
+            <label>Your Wishlist (minimum 3)</label>
+            <div class="wish-inputs">
+              <div class="wish-item">
+                <input type="text" id="createWish1" class="form-control" placeholder="Wish 1">
+              </div>
+              <div class="wish-item">
+                <input type="text" id="createWish2" class="form-control" placeholder="Wish 2">
+              </div>
+              <div class="wish-item">
+                <input type="text" id="createWish3" class="form-control" placeholder="Wish 3">
+              </div>
+            </div>
+            <button id="btnAddWish" class="add-wish">
+              <i class="fas fa-plus-circle"></i> Add another wish
+            </button>
+          </div>
+          
+          <div class="form-group">
+            <h3 style="margin-bottom: 15px;"><i class="fas fa-cog"></i> Lobby Settings</h3>
+            <div class="settings-group">
+              <div>
+                <label for="minSpend">Minimum Spend (R)</label>
+                <input type="number" id="minSpend" class="form-control" value="50" min="5">
+              </div>
+              <div>
+                <label for="maxPlayers">Max Players</label>
+                <input type="number" id="maxPlayers" class="form-control" value="10" min="3" max="20">
+              </div>
+              <div>
+                <label for="giftDeadline">Gift Deadline</label>
+                <input type="date" id="giftDeadline" class="form-control">
+              </div>
+              <div>
+                <label for="theme">Lobby Theme</label>
+                <select id="theme" class="form-control">
+                  <option value="christmas">Christmas</option>
+                  <option value="winter">Winter Wonderland</option>
+                  <option value="festive">Festive</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button id="btnResetCreate" class="btn btn-secondary">
+              <i class="fas fa-redo"></i> Reset
+            </button>
+            <button id="btnConfirmCreate" class="btn btn-primary">
+              <i class="fas fa-check"></i> Create Lobby
+            </button>
+          </div>
+        </div>
       </div>
-
-      <div class="wishlist-section">
-        <h3>Their Wishlist</h3>
-        <ul id="assignedWishes" class="wishlist">
-          <!-- Wishes will be added here -->
-        </ul>
+      
+      <!-- Join lobby screen -->
+      <div id="joinScreen" class="hidden">
+        <div class="content-card">
+          <h2><i class="fas fa-sign-in-alt"></i> Join a Lobby</h2>
+          <div class="form-group">
+            <label for="joinCode">Lobby Code</label>
+            <input type="text" id="joinCode" class="form-control" placeholder="Enter lobby code">
+          </div>
+          
+          <div class="form-group">
+            <label for="joinName">Your Name</label>
+            <input type="text" id="joinName" class="form-control" placeholder="Enter your name">
+          </div>
+          
+          <div class="form-group">
+            <label>Your Wishlist (minimum 3)</label>
+            <div class="wish-inputs">
+              <div class="wish-item">
+                <input type="text" id="joinWish1" class="form-control" placeholder="Wish 1">
+              </div>
+              <div class="wish-item">
+                <input type="text" id="joinWish2" class="form-control" placeholder="Wish 2">
+              </div>
+              <div class="wish-item">
+                <input type="text" id="joinWish3" class="form-control" placeholder="Wish 3">
+              </div>
+            </div>
+            <button id="btnAddWishJoin" class="add-wish">
+              <i class="fas fa-plus-circle"></i> Add another wish
+            </button>
+          </div>
+          
+          <div class="form-actions">
+            <button id="btnResetJoin" class="btn btn-secondary">
+              <i class="fas fa-redo"></i> Reset
+            </button>
+            <button id="btnConfirmJoin" class="btn btn-primary">
+              <i class="fas fa-check"></i> Join Lobby
+            </button>
+          </div>
+        </div>
       </div>
-
-      <div class="action-buttons">
-        <button id="btnBackToLobby" class="action-btn primary">
-          <i class="fas fa-arrow-left"></i>
-          Back to Lobby
-        </button>
+      
+      <!-- Lobby screen -->
+      <div id="lobbyScreen" class="hidden">
+        <div class="content-card">
+          <div class="lobby-header">
+            <h2>Lobby: <span id="lobbyCodeDisplay"></span></h2>
+            <div class="lobby-actions">
+              <button id="btnEditWishlist" class="btn btn-outline">
+                <i class="fas fa-edit"></i> Edit Wishlist
+              </button>
+              <button id="btnSettings" class="btn btn-outline">
+                <i class="fas fa-cog"></i> Settings
+              </button>
+            </div>
+          </div>
+          <div id="lobbySettings" class="settings-display">
+            <p><strong>Minimum Spend:</strong> R<span id="minSpendDisplay">50</span></p>
+            <p><strong>Max Players:</strong> <span id="maxPlayersDisplay">10</span></p>
+            <p><strong>Gift Deadline:</strong> <span id="deadlineDisplay">Not set</span></p>
+            <p><strong>Theme:</strong> <span id="themeDisplay">Christmas</span></p>
+          </div>
+          <div id="playerDetails" class="hidden">
+            <h3 id="selectedPlayerName"></h3>
+            <h4>Wishlist:</h4>
+            <ul id="selectedPlayerWishes" class="wish-list"></ul>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Player Details Modal -->
-  <div id="playerModal" class="modal">
-    <div class="modal-content rounded-modal">
-      <div class="modal-header">
-        <h3 id="playerModalTitle">Player Details</h3>
-        <button id="btnCloseModal" class="close-btn">
-          <i class="fas fa-times"></i>
-        </button>
+      
+      <!-- Edit wishlist screen -->
+      <div id="editWishlistScreen" class="hidden">
+        <div class="content-card">
+          <h2><i class="fas fa-edit"></i> Edit Your Wishlist</h2>
+          <div class="form-group">
+            <label>Your Wishlist (minimum 3)</label>
+            <div id="editWishInputs" class="wish-inputs">
+              <!-- Dynamic wish inputs will be added here -->
+            </div>
+            <button id="btnAddEditWish" class="add-wish">
+              <i class="fas fa-plus-circle"></i> Add another wish
+            </button>
+          </div>
+          
+          <div class="form-actions">
+            <button id="btnCancelEdit" class="btn btn-secondary">
+              <i class="fas fa-times"></i> Cancel
+            </button>
+            <button id="btnSaveWishlist" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Wishlist
+            </button>
+          </div>
+        </div>
       </div>
-      <div class="modal-body">
-        <h4>Wishlist</h4>
-        <ul id="playerModalWishes" class="wishlist">
-          <!-- Wishes will be added here -->
-        </ul>
+      
+      <!-- Admin settings screen -->
+      <div id="adminSettingsScreen" class="hidden">
+        <div class="content-card">
+          <h2><i class="fas fa-cog"></i> Lobby Settings</h2>
+          <div class="form-group">
+            <div class="settings-group">
+              <div>
+                <label for="editMinSpend">Minimum Spend (R)</label>
+                <input type="number" id="editMinSpend" class="form-control" value="50" min="5">
+              </div>
+              <div>
+                <label for="editMaxPlayers">Max Players</label>
+                <input type="number" id="editMaxPlayers" class="form-control" value="10" min="3" max="20">
+              </div>
+              <div>
+                <label for="editGiftDeadline">Gift Deadline</label>
+                <input type="date" id="editGiftDeadline" class="form-control">
+              </div>
+              <div>
+                <label for="editTheme">Lobby Theme</label>
+                <select id="editTheme" class="form-control">
+                  <option value="christmas">Christmas</option>
+                  <option value="winter">Winter Wonderland</option>
+                  <option value="festive">Festive</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button id="btnCancelSettings" class="btn btn-secondary">
+              <i class="fas fa-times"></i> Cancel
+            </button>
+            <button id="btnSaveSettings" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Settings
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Draw result screen -->
+      <div id="resultScreen" class="hidden">
+        <div class="content-card draw-result">
+          <h2>Your Secret Santa Assignment!</h2>
+          <div class="assigned-person" id="assignedPerson">
+            Loading...
+          </div>
+          <h3>Their Wishlist:</h3>
+          <ul id="assignedWishes" class="wish-list"></ul>
+          <div class="result-actions">
+            <button id="btnDone" class="btn btn-primary">
+              <i class="fas fa-check"></i> Got it!
+            </button>
+            <button id="btnViewWishlist" class="btn btn-outline">
+              <i class="fas fa-edit"></i> Update My Wishlist
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -176,6 +311,8 @@
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <!-- Your main app script -->
   <script src="app.js"></script>
 </body>
 </html>
