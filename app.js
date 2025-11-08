@@ -293,7 +293,7 @@ async function createLobby() {
   
   // Join as owner
   await joinRoom(code, true, { name, wishes });
-  showToast('Lobby created!');
+  showToast('Lobby created! 🎄');
 }
 
 // Join a lobby
@@ -366,7 +366,7 @@ async function joinLobby() {
     
     // Join room
     await joinRoom(code, false, { name, wishes });
-    showToast('Joined lobby!');
+    showToast('Joined lobby! 🎅');
   } finally {
     joinInProgress = false;
     btnConfirmJoin.disabled = false;
@@ -748,7 +748,7 @@ async function saveWishlist() {
   local.name = name;
   local.wishes = wishes;
   
-  showToast('Wishlist updated!');
+  showToast('Wishlist updated! 🎁');
 }
 
 // Show edit settings modal
@@ -778,7 +778,7 @@ async function saveAdminSettings(minSpend, maxPlayers, giftDeadline) {
     giftDeadline: giftDeadline
   });
   
-  showToast('Settings updated!');
+  showToast('Settings updated! ⚙️');
 }
 
 // Start the draw
@@ -830,7 +830,7 @@ async function startDraw() {
   updates[`rooms/${room}/drawStarted`] = true;
   
   await db.ref().update(updates);
-  showToast('Draw completed!');
+  showToast('Draw completed! ✨');
 }
 
 // Show draw result
