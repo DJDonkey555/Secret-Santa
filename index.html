@@ -1,78 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Secret Santa — Family</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secret Santa 🎅</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="container">
-    <h1>🎅 Secret Santa (Family)</h1>
 
-    <section id="home">
-      <div class="card">
-        <button id="btnCreate" class="primary">Create Server</button>
-        <button id="btnJoin" class="secondary">Join Server</button>
-      </div>
-    </section>
+  <!-- Your app HTML layout goes here -->
+  <div id="home">
+    <h1>🎁 Secret Santa</h1>
+    <button id="btnCreate">Create Server</button>
+    <button id="btnJoin">Join Server</button>
+  </div>
 
-    <section id="createScreen" class="hidden card">
-      <h2>Server created</h2>
-      <p>Share this code with family: <strong id="roomCode"></strong></p>
-      <h3>Members</h3>
-      <ul id="memberList"></ul>
-      <div class="controls">
-        <button id="btnStart" class="primary">Start Draw</button>
-        <button id="btnLeave" class="secondary">Close Room</button>
-      </div>
-    </section>
+  <!-- Other screens -->
+  <div id="createScreen" class="hidden">
+    <h2>Room Code: <span id="roomCode"></span></h2>
+    <ul id="memberList"></ul>
+    <button id="btnStart">Start Draw</button>
+    <button id="btnLeave">Leave</button>
+  </div>
 
-    <section id="joinScreen" class="hidden card">
-      <h2>Join Server</h2>
-      <label>Server code
-        <input id="joinCode" placeholder="ABCDE" maxlength="6" />
-      </label>
-      <label>Your name
-        <input id="joinName" placeholder="e.g., Aunt Mary" />
-      </label>
-      <p>Enter 3 wish items (required)</p>
-      <label>Wish 1 <input id="wish1" /></label>
-      <label>Wish 2 <input id="wish2" /></label>
-      <label>Wish 3 <input id="wish3" /></label>
-      <div class="controls">
-        <button id="btnSubmitJoin" class="primary">Join</button>
-        <button id="btnBackHome" class="secondary">Back</button>
-      </div>
-    </section>
+  <div id="joinScreen" class="hidden">
+    <h2>Join a Room</h2>
+    <input id="joinCode" placeholder="Room code" />
+    <input id="joinName" placeholder="Your name" />
+    <input id="wish1" placeholder="Wish 1" />
+    <input id="wish2" placeholder="Wish 2" />
+    <input id="wish3" placeholder="Wish 3" />
+    <button id="btnSubmitJoin">Join</button>
+    <button id="btnBackHome">Back</button>
+  </div>
 
-    <section id="memberScreen" class="hidden card">
-      <h2>Waiting room</h2>
-      <p>Room: <strong id="memberRoom"></strong></p>
-      <h3>Members</h3>
-      <ul id="memberList2"></ul>
-      <div class="controls">
-        <button id="btnLeave2" class="secondary">Leave Room</button>
-      </div>
-    </section>
+  <div id="memberScreen" class="hidden">
+    <h2>Room: <span id="memberRoom"></span></h2>
+    <ul id="memberList2"></ul>
+    <button id="btnLeave2">Leave</button>
+  </div>
 
-    <section id="resultScreen" class="hidden card">
-      <h2>Your assigned person</h2>
-      <p id="assignedNote"></p>
-      <h3 id="assignedName"></h3>
-      <ul id="assignedWishes"></ul>
-      <div class="controls">
-        <button id="btnDone" class="primary">Done</button>
-      </div>
-    </section>
+  <div id="resultScreen" class="hidden">
+    <h2>You got: <span id="assignedName"></span></h2>
+    <ul id="assignedWishes"></ul>
+    <p id="assignedNote"></p>
+    <button id="btnDone">Done</button>
+  </div>
 
-    <footer>
-      <small>For family use. Hosted on GitHub Pages.</small>
-    </footer>
-  </main>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
+  <!-- Your main app script -->
   <script src="app.js"></script>
 </body>
 </html>
