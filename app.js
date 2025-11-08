@@ -18,36 +18,27 @@ const db = firebase.database();
 const homeScreen = document.getElementById('homeScreen');
 const lobbyScreen = document.getElementById('lobbyScreen');
 const resultScreen = document.getElementById('resultScreen');
+const playerModal = document.getElementById('playerModal');
 
 const btnCreate = document.getElementById('btnCreate');
 const btnJoin = document.getElementById('btnJoin');
-const btnMenu = document.getElementById('btnMenu');
+const btnBack = document.getElementById('btnBack');
 const btnUser = document.getElementById('btnUser');
 const btnSaveWishlist = document.getElementById('btnSaveWishlist');
-const btnAddWish = document.getElementById('btnAddWish');
 const btnStartDraw = document.getElementById('btnStartDraw');
 const btnEditSettings = document.getElementById('btnEditSettings');
-const btnRevealMatch = document.getElementById('btnRevealMatch');
-const btnBackFromResult = document.getElementById('btnBackFromResult');
-const btnLeaveLobby = document.getElementById('btnLeaveLobby');
-const btnAdminSettings = document.getElementById('btnAdminSettings');
+const btnBackToLobby = document.getElementById('btnBackToLobby');
+const btnCloseModal = document.getElementById('btnCloseModal');
 
 const playersList = document.getElementById('playersList');
-const playerModal = document.getElementById('playerModal');
-const menuModal = document.getElementById('menuModal');
-const btnCloseModal = document.getElementById('btnCloseModal');
-const btnCloseMenu = document.getElementById('btnCloseMenu');
-
 const playerModalTitle = document.getElementById('playerModalTitle');
 const playerModalWishes = document.getElementById('playerModalWishes');
-const assignedPerson = document.getElementById('assignedPerson');
+const assignedName = document.getElementById('assignedName');
 const assignedWishes = document.getElementById('assignedWishes');
-const matchResult = document.getElementById('matchResult');
-const adminSettings = document.getElementById('adminSettings');
+const adminControls = document.getElementById('adminControls');
 
 const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
-const navItems = document.querySelectorAll('.nav-item');
 
 // Local state
 let local = {
@@ -59,9 +50,6 @@ let local = {
   wishes: []
 };
 
-// Wish counter for dynamic wish inputs
-let wishCount = 3;
-
 // Initialize the app
 function init() {
   setupEventListeners();
@@ -70,54 +58,35 @@ function init() {
 
 // Set up event listeners
 function setupEventListeners() {
-  // Navigation buttons
+  // Navigation
   btnCreate.addEventListener('click', showCreateModal);
   btnJoin.addEventListener('click', showJoinModal);
-  btnMenu.addEventListener('click', () => menuModal.classList.add('active'));
-  btnUser.addEventListener('click', switchToTab.bind(null, 'myCard'));
-  btnBackFromResult.addEventListener('click', () => showScreen(lobbyScreen));
-  btnRevealMatch.addEventListener('click', revealMatch);
+  btnBack.addEventListener('click', () => showScreen(homeScreen));
+  btnBackToLobby.addEventListener('click', () => showScreen(lobbyScreen));
+  btnUser.addEventListener('click', () => switchTab('myCard'));
   
-  // Modal buttons
-  btnCloseModal.addEventListener('click', () => playerModal.classList.remove('active'));
-  btnCloseMenu.addEventListener('click', () => menuModal.classList.remove('active'));
-  btnLeaveLobby.addEventListener('click', leaveLobby);
-  btnAdminSettings.addEventListener('click', () => {
-    menuModal.classList.remove('active');
-    switchToTab('settings');
-  });
-  
-  // Wishlist buttons
+  // Wishlist
   btnSaveWishlist.addEventListener('click', saveWishlist);
-  btnAddWish.addEventListener('click', addWishInput);
   
-  // Admin buttons
+  // Admin
   btnStartDraw.addEventListener('click', startDraw);
   btnEditSettings.addEventListener('click', showEditSettingsModal);
   
-  // Tab switching
+  // Modal
+  btnCloseModal.addEventListener('click', () => playerModal.classList.remove('active'));
+  
+  // Tabs
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const tabName = tab.getAttribute('data-tab');
-      switchToTab(tabName);
+      switchTab(tabName);
     });
   });
   
-  // Bottom navigation
-  navItems.forEach(item => {
-    item.addEventListener('click', () => {
-      const tabName = item.getAttribute('data-tab');
-      switchToTab(tabName);
-    });
-  });
-  
-  // Close modals when clicking outside
+  // Close modal when clicking outside
   window.addEventListener('click', (e) => {
     if (e.target === playerModal) {
       playerModal.classList.remove('active');
-    }
-    if (e.target === menuModal) {
-      menuModal.classList.remove('active');
     }
   });
 }
@@ -135,8 +104,6 @@ function checkLocalStorage() {
     local.name = savedName;
     local.role = savedRole;
     local.isOwner = savedRole === 'owner';
-    
-    // Try to rejoin the room
     rejoinRoom();
   } else {
     showScreen(homeScreen);
@@ -161,46 +128,20 @@ function clearLocalStorage() {
 
 // Show a specific screen
 function showScreen(screen) {
-  document.querySelectorAll('.screen').forEach(s => {
-    s.classList.remove('active');
-    s.classList.add('right');
-  });
-  
-  screen.classList.remove('right');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   screen.classList.add('active');
 }
 
-// Switch to a specific tab
-function switchToTab(tabName) {
-  // Update tabs
-  tabs.forEach(tab => {
-    if (tab.getAttribute('data-tab') === tabName) {
-      tab.classList.add('active');
-    } else {
-      tab.classList.remove('active');
-    }
-  });
+// Switch tabs
+function switchTab(tabName) {
+  tabs.forEach(tab => tab.classList.remove('active'));
+  tabContents.forEach(content => content.classList.remove('active'));
   
-  // Update tab contents
-  tabContents.forEach(content => {
-    if (content.id === `${tabName}Tab`) {
-      content.classList.add('active');
-    } else {
-      content.classList.remove('active');
-    }
-  });
-  
-  // Update bottom navigation
-  navItems.forEach(item => {
-    if (item.getAttribute('data-tab') === tabName) {
-      item.classList.add('active');
-    } else {
-      item.classList.remove('active');
-    }
-  });
+  document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+  document.getElementById(`${tabName}Tab`).classList.add('active');
 }
 
-// Show create modal (simplified for this example)
+// Show create modal
 function showCreateModal() {
   const name = prompt("Enter your name:");
   if (!name) return;
@@ -217,9 +158,9 @@ function showCreateModal() {
   createLobby(name, [wish1, wish2, wish3]);
 }
 
-// Show join modal (simplified for this example)
+// Show join modal
 function showJoinModal() {
-  const code = prompt("Enter lobby code:");
+  const code = prompt("Enter lobby code:").toUpperCase();
   if (!code) return;
   
   const name = prompt("Enter your name:");
@@ -237,19 +178,14 @@ function showJoinModal() {
   joinLobby(code, name, [wish1, wish2, wish3]);
 }
 
-// Create a lobby
+// Create lobby
 async function createLobby(name, wishes) {
-  // Generate room code
   const code = makeCode(5);
   const roomRef = db.ref('rooms/' + code);
   const snapshot = await roomRef.get();
   
-  if (snapshot.exists()) {
-    // If room exists, try again
-    return createLobby(name, wishes);
-  }
+  if (snapshot.exists()) return createLobby(name, wishes);
   
-  // Create room
   await roomRef.set({
     owner: name,
     minSpend: 50,
@@ -259,7 +195,6 @@ async function createLobby(name, wishes) {
     drawStarted: false
   });
   
-  // Set local state
   local.role = 'owner';
   local.room = code;
   local.name = name;
@@ -267,31 +202,26 @@ async function createLobby(name, wishes) {
   local.isOwner = true;
   local.wishes = wishes;
   
-  // Join as owner
   await joinRoom(code, true, { name, wishes });
-  
-  showToast('Lobby created successfully!');
+  showToast('Lobby created!');
 }
 
-// Join a lobby
+// Join lobby
 async function joinLobby(code, name, wishes) {
-  // Check if room exists
   const roomRef = db.ref('rooms/' + code);
   const snap = await roomRef.get();
   
   if (!snap.exists()) {
-    alert('Room not found. Check the code.');
+    alert('Room not found');
     return;
   }
   
-  // Check if draw has already started
   const roomData = snap.val();
   if (roomData.drawStarted) {
-    alert('The draw has already started in this room');
+    alert('Draw already started');
     return;
   }
   
-  // Set local state
   local.role = 'member';
   local.room = code;
   local.name = name;
@@ -299,14 +229,12 @@ async function joinLobby(code, name, wishes) {
   local.isOwner = false;
   local.wishes = wishes;
   
-  // Join room
   await joinRoom(code, false, { name, wishes });
-  
-  showToast('Joined lobby successfully!');
+  showToast('Joined lobby!');
 }
 
-// Join room function
-async function joinRoom(room, asOwner = false, payload) {
+// Join room
+async function joinRoom(room, asOwner, payload) {
   const memberRef = db.ref(`rooms/${room}/members/${local.myUid}`);
   
   await memberRef.set({
@@ -315,29 +243,20 @@ async function joinRoom(room, asOwner = false, payload) {
     joinedAt: Date.now()
   });
   
-  // Save to localStorage
   saveToLocalStorage();
   
   // Update UI
   document.getElementById('lobbyTitle').textContent = `Lobby: ${room}`;
-  document.getElementById('userNameResult').textContent = payload.name;
-  
-  // Show admin controls if owner
-  if (asOwner) {
-    adminSettings.classList.remove('hidden');
-    btnAdminSettings.classList.remove('hidden');
-  }
-  
-  // Populate user data
   document.getElementById('playerName').value = payload.name;
   document.getElementById('wish1').value = payload.wishes[0] || '';
   document.getElementById('wish2').value = payload.wishes[1] || '';
   document.getElementById('wish3').value = payload.wishes[2] || '';
   
-  // Start listening to room updates
-  listenRoom(room);
+  if (asOwner) {
+    adminControls.classList.remove('hidden');
+  }
   
-  // Show lobby screen
+  listenRoom(room);
   showScreen(lobbyScreen);
 }
 
@@ -347,63 +266,52 @@ async function rejoinRoom() {
   const snap = await roomRef.get();
   
   if (!snap.exists()) {
-    showToast('The room no longer exists');
+    showToast('Room no longer exists');
     clearLocalStorage();
     showScreen(homeScreen);
     return;
   }
   
-  const roomData = snap.val();
-  
-  // Check if user is still in the room
   const memberRef = db.ref(`rooms/${local.room}/members/${local.myUid}`);
   const memberSnap = await memberRef.get();
   
   if (!memberSnap.exists()) {
-    showToast('You are no longer in this room');
+    showToast('You were removed from the room');
     clearLocalStorage();
     showScreen(homeScreen);
     return;
   }
   
-  // Get user's wishes
   const memberData = memberSnap.val();
   local.wishes = memberData.wishes || [];
   
   // Update UI
   document.getElementById('lobbyTitle').textContent = `Lobby: ${local.room}`;
-  document.getElementById('userNameResult').textContent = local.name;
-  
-  // Show admin controls if owner
-  if (local.isOwner) {
-    adminSettings.classList.remove('hidden');
-    btnAdminSettings.classList.remove('hidden');
-  }
-  
-  // Populate user data
   document.getElementById('playerName').value = local.name;
   document.getElementById('wish1').value = local.wishes[0] || '';
   document.getElementById('wish2').value = local.wishes[1] || '';
   document.getElementById('wish3').value = local.wishes[2] || '';
   
-  // Update settings display
+  if (local.isOwner) {
+    adminControls.classList.remove('hidden');
+  }
+  
+  const roomData = snap.val();
   document.getElementById('minSpendValue').textContent = roomData.minSpend || 50;
   document.getElementById('maxPlayersValue').textContent = roomData.maxPlayers || 10;
   
   if (roomData.giftDeadline) {
-    document.getElementById('giftDeadlineValue').textContent = new Date(roomData.giftDeadline).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    document.getElementById('giftDeadlineValue').textContent = 
+      new Date(roomData.giftDeadline).toLocaleDateString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric'
+      });
   }
   
-  // Start listening to room updates
   listenRoom(local.room);
   
-  // Show appropriate screen
   if (roomData.drawStarted) {
     showScreen(resultScreen);
+    showDrawResult();
   } else {
     showScreen(lobbyScreen);
   }
@@ -417,19 +325,15 @@ function listenRoom(room) {
   membersRef.on('value', snap => {
     const members = snap.val() || {};
     const membersArr = Object.entries(members).map(([uid, info]) => ({ uid, ...info }));
-    
     renderPlayerList(membersArr);
     
-    // Check if current user is still in the room
     if (!members[local.myUid]) {
-      // User was kicked or removed
-      showToast('You have been removed from the lobby');
+      showToast('You were removed from the lobby');
       clearLocalStorage();
       showScreen(homeScreen);
       return;
     }
     
-    // Update local wishes if they changed
     if (members[local.myUid].wishes) {
       local.wishes = members[local.myUid].wishes;
     }
@@ -438,28 +342,25 @@ function listenRoom(room) {
   roomRef.on('value', snap => {
     const roomData = snap.val();
     if (!roomData) {
-      // Room was deleted (admin left)
-      showToast('The lobby has been terminated');
+      showToast('Lobby terminated');
       clearLocalStorage();
       showScreen(homeScreen);
       return;
     }
     
-    // Update settings display
     document.getElementById('minSpendValue').textContent = roomData.minSpend || 50;
     document.getElementById('maxPlayersValue').textContent = roomData.maxPlayers || 10;
     
     if (roomData.giftDeadline) {
-      document.getElementById('giftDeadlineValue').textContent = new Date(roomData.giftDeadline).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
+      document.getElementById('giftDeadlineValue').textContent = 
+        new Date(roomData.giftDeadline).toLocaleDateString('en-GB', {
+          day: 'numeric', month: 'short', year: 'numeric'
+        });
     }
     
-    // Check if draw has started
     if (roomData.drawStarted) {
       showScreen(resultScreen);
+      showDrawResult();
     }
   });
 }
@@ -472,35 +373,32 @@ function renderPlayerList(players) {
     const playerCard = document.createElement('div');
     playerCard.className = 'player-card';
     
-    // Check if this player is assigned to the current user
     if (player.assignedToUid === local.myUid) {
       playerCard.classList.add('assigned');
     }
     
     playerCard.innerHTML = `
-      <div class="player-name">
-        ${player.name}
-        ${local.isOwner && player.uid !== local.myUid ? `<button class="kick-button" data-uid="${player.uid}">
-          <i class="fas fa-times"></i>
-        </button>` : ''}
-      </div>
+      <div class="player-name">${player.name}</div>
       ${player.wishes && player.wishes.length > 0 ? `
         <div class="player-wish">
           <i class="fas fa-gift"></i>
           ${player.wishes[0]}
         </div>
       ` : ''}
+      ${local.isOwner && player.uid !== local.myUid ? `
+        <button class="kick-btn" data-uid="${player.uid}">
+          <i class="fas fa-times"></i>
+        </button>
+      ` : ''}
     `;
     
-    // Add click event to show player details
     playerCard.addEventListener('click', (e) => {
-      if (!e.target.classList.contains('kick-button')) {
+      if (!e.target.closest('.kick-btn')) {
         showPlayerDetails(player);
       }
     });
     
-    // Add kick button event if it exists
-    const kickBtn = playerCard.querySelector('.kick-button');
+    const kickBtn = playerCard.querySelector('.kick-btn');
     if (kickBtn) {
       kickBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -512,7 +410,7 @@ function renderPlayerList(players) {
   });
 }
 
-// Show player details in modal
+// Show player details
 function showPlayerDetails(player) {
   playerModalTitle.textContent = player.name;
   playerModalWishes.innerHTML = '';
@@ -532,73 +430,54 @@ function showPlayerDetails(player) {
   playerModal.classList.add('active');
 }
 
-// Kick a player
+// Kick player
 async function kickPlayer(uid) {
   if (!local.isOwner) return;
   
-  if (confirm('Are you sure you want to kick this player?')) {
+  if (confirm('Kick this player?')) {
     await db.ref(`rooms/${local.room}/members/${uid}`).remove();
     showToast('Player kicked');
   }
-}
-
-// Add wish input field
-function addWishInput() {
-  wishCount++;
-  const wishInputs = document.querySelector('.wishlist-form .form-group:nth-child(2)');
-  const newInput = document.createElement('input');
-  newInput.type = 'text';
-  newInput.id = `wish${wishCount}`;
-  newInput.className = 'form-input';
-  newInput.placeholder = `Wish ${wishCount}`;
-  wishInputs.appendChild(newInput);
 }
 
 // Save wishlist
 async function saveWishlist() {
   const name = document.getElementById('playerName').value.trim();
   if (!name) {
-    alert('Please enter your name');
+    alert('Enter your name');
     return;
   }
   
-  // Collect wishes
-  const wishes = [];
-  for (let i = 1; i <= wishCount; i++) {
-    const wishInput = document.getElementById(`wish${i}`);
-    if (wishInput) {
-      const wish = wishInput.value.trim();
-      if (wish) wishes.push(wish);
-    }
-  }
+  const wishes = [
+    document.getElementById('wish1').value.trim(),
+    document.getElementById('wish2').value.trim(),
+    document.getElementById('wish3').value.trim()
+  ].filter(wish => wish);
   
   if (wishes.length < 3) {
-    alert('Please enter at least 3 wishes');
+    alert('Enter at least 3 wishes');
     return;
   }
   
-  // Update in Firebase
   await db.ref(`rooms/${local.room}/members/${local.myUid}`).update({
     name: name,
     wishes: wishes
   });
   
-  // Update local state
   local.name = name;
   local.wishes = wishes;
-  
-  showToast('Wishlist updated successfully!');
+  showToast('Wishlist saved!');
 }
 
-// Show edit settings modal (simplified for this example)
+// Show edit settings modal
 function showEditSettingsModal() {
-  const minSpend = prompt('Enter minimum spend (R):', document.getElementById('minSpendValue').textContent);
+  const minSpend = prompt('Minimum spend (R):', document.getElementById('minSpendValue').textContent);
   if (!minSpend) return;
   
-  const maxPlayers = prompt('Enter maximum players:', document.getElementById('maxPlayersValue').textContent);
+  const maxPlayers = prompt('Max players:', document.getElementById('maxPlayersValue').textContent);
   if (!maxPlayers) return;
   
-  const giftDeadline = prompt('Enter gift deadline (YYYY-MM-DD):', '2023-12-24');
+  const giftDeadline = prompt('Gift deadline (YYYY-MM-DD):', '2023-12-24');
   if (!giftDeadline) return;
   
   saveAdminSettings(parseInt(minSpend), parseInt(maxPlayers), giftDeadline);
@@ -614,10 +493,10 @@ async function saveAdminSettings(minSpend, maxPlayers, giftDeadline) {
     giftDeadline: giftDeadline
   });
   
-  showToast('Settings updated successfully!');
+  showToast('Settings updated!');
 }
 
-// Start the draw
+// Start draw
 async function startDraw() {
   if (!local.isOwner) return;
   
@@ -637,7 +516,7 @@ async function startDraw() {
   }));
   
   if (entries.length < 3) {
-    showToast('Need at least 3 players to start the draw');
+    showToast('Need at least 3 players');
     return;
   }
   
@@ -645,7 +524,7 @@ async function startDraw() {
   const assigned = derangement(uids);
   
   if (!assigned) {
-    showToast('Could not create assignments. Try again.');
+    showToast('Try again');
     return;
   }
   
@@ -669,15 +548,15 @@ async function startDraw() {
   showToast('Draw completed!');
 }
 
-// Reveal match
-async function revealMatch() {
+// Show draw result
+async function showDrawResult() {
   const assignmentRef = db.ref(`rooms/${local.room}/assignments/${local.myUid}`);
   const assignmentSnap = await assignmentRef.get();
   
   if (assignmentSnap.exists()) {
     const assignment = assignmentSnap.val();
     
-    assignedPerson.textContent = assignment.name;
+    assignedName.textContent = assignment.name;
     assignedWishes.innerHTML = '';
     
     if (assignment.wishes && assignment.wishes.length > 0) {
@@ -691,57 +570,10 @@ async function revealMatch() {
       li.textContent = 'No wishes listed';
       assignedWishes.appendChild(li);
     }
-    
-    matchResult.classList.remove('hidden');
-    btnRevealMatch.style.display = 'none';
   }
 }
 
-// Leave the lobby
-async function leaveLobby() {
-  // Check if draw has started
-  const roomRef = db.ref('rooms/' + local.room);
-  const roomSnap = await roomRef.get();
-  const roomData = roomSnap.val();
-  
-  if (roomData.drawStarted && !local.isOwner) {
-    showToast('Cannot leave after the draw has started');
-    return;
-  }
-  
-  if (local.room && local.myUid) {
-    // Remove user from members list
-    await db.ref(`rooms/${local.room}/members/${local.myUid}`).remove();
-    
-    // If owner leaves, delete the room
-    if (local.isOwner) {
-      await db.ref(`rooms/${local.room}`).remove();
-    }
-  }
-  
-  // Clear local state
-  local = {
-    role: null,
-    room: null,
-    name: null,
-    myUid: null,
-    isOwner: false,
-    wishes: []
-  };
-  
-  clearLocalStorage();
-  
-  // Reset UI
-  adminSettings.classList.add('hidden');
-  btnAdminSettings.classList.add('hidden');
-  matchResult.classList.add('hidden');
-  btnRevealMatch.style.display = 'block';
-  
-  showScreen(homeScreen);
-  showToast('Left the lobby');
-}
-
-// Utility function to generate room code
+// Utility functions
 function makeCode(len = 5) {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let s = "";
@@ -751,7 +583,6 @@ function makeCode(len = 5) {
   return s;
 }
 
-// Derangement algorithm for Secret Santa assignment
 function derangement(uids) {
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
@@ -769,21 +600,22 @@ function derangement(uids) {
   return null;
 }
 
-// Show toast notification
 function showToast(message) {
-  // Create a simple toast notification
   const toast = document.createElement('div');
   toast.textContent = message;
-  toast.style.position = 'fixed';
-  toast.style.bottom = '20px';
-  toast.style.left = '50%';
-  toast.style.transform = 'translateX(-50%)';
-  toast.style.backgroundColor = 'var(--primary)';
-  toast.style.color = 'white';
-  toast.style.padding = '12px 20px';
-  toast.style.borderRadius = '8px';
-  toast.style.zIndex = '1000';
-  toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 12px;
+    z-index: 1000;
+    box-shadow: var(--shadow);
+    font-weight: 500;
+  `;
   document.body.appendChild(toast);
   
   setTimeout(() => {
