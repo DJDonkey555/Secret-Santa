@@ -1,4 +1,11 @@
-// Firebase configuration
+/*******************************
+ * Secret Santa - app.js (CDN compat)
+ *******************************/
+
+/* ========== Firebase config ==========
+   Replace with your Firebase config if different.
+   (This is the config you already provided.)
+=======================================*/
 const firebaseConfig = {
   apiKey: "AIzaSyBOlYzXVvUib58tv_hNMHlGSM2TmdLTZdE",
   authDomain: "secret-santa-cad9a.firebaseapp.com",
@@ -10,801 +17,260 @@ const firebaseConfig = {
   measurementId: "G-4C21F6SRCZ"
 };
 
-// Initialize Firebase
+// init firebase (compat)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// DOM elements
-const homeScreen = document.getElementById('homeScreen');
-const createScreen = document.getElementById('createScreen');
-const joinScreen = document.getElementById('joinScreen');
-const lobbyScreen = document.getElementById('lobbyScreen');
-const resultScreen = document.getElementById('resultScreen');
-const editWishlistScreen = document.getElementById('editWishlistScreen');
-const adminSettingsScreen = document.getElementById('adminSettingsScreen');
-const giftAnimation = document.getElementById('giftAnimation');
+/* ========= DOM ========= */
+const $ = id => document.getElementById(id);
+const home = $('home');
+const lobby = $('lobby');
+const result = $('result');
 
-const homeButtons = document.getElementById('homeButtons');
-const playerListContainer = document.getElementById('playerListContainer');
-const lobbyControls = document.getElementById('lobbyControls');
+const btnCreate = $('btnCreate');
+const btnJoin = $('btnJoin');
+const btnBackHome = $('btnBackHome');
 
-const btnCreate = document.getElementById('btnCreate');
-const btnJoin = document.getElementById('btnJoin');
-const btnStartDraw = document.getElementById('btnStartDraw');
-const btnLeave = document.getElementById('btnLeave');
+const roomCodeEl = $('roomCode');
+const memberListEl = $('memberList');
 
-const btnConfirmCreate = document.getElementById('btnConfirmCreate');
-const btnResetCreate = document.getElementById('btnResetCreate');
-const btnConfirmJoin = document.getElementById('btnConfirmJoin');
-const btnResetJoin = document.getElementById('btnResetJoin');
-const btnDone = document.getElementById('btnDone');
+const joinName = $('joinName');
+const wish1 = $('wish1');
+const wish2 = $('wish2');
+const wish3 = $('wish3');
+const btnSubmitJoin = $('btnSubmitJoin');
 
-const btnAddWish = document.getElementById('btnAddWish');
-const btnAddWishJoin = document.getElementById('btnAddWishJoin');
+const ownerControls = $('ownerControls');
+const memberControls = $('memberControls');
+const mustJoinForm = $('mustJoinForm');
 
-const btnEditWishlist = document.getElementById('btnEditWishlist');
-const btnSettings = document.getElementById('btnSettings');
-const btnAddEditWish = document.getElementById('btnAddEditWish');
-const btnCancelEdit = document.getElementById('btnCancelEdit');
-const btnSaveWishlist = document.getElementById('btnSaveWishlist');
-const btnCancelSettings = document.getElementById('btnCancelSettings');
-const btnSaveSettings = document.getElementById('btnSaveSettings');
-const btnViewWishlist = document.getElementById('btnViewWishlist');
+const btnStart = $('btnStart');
+const btnCloseRoom = $('btnCloseRoom');
+const btnLeave = $('btnLeave');
 
-const playerList = document.getElementById('playerList');
-const playerDetails = document.getElementById('playerDetails');
-const selectedPlayerName = document.getElementById('selectedPlayerName');
-const selectedPlayerWishes = document.getElementById('selectedPlayerWishes');
-const editWishInputs = document.getElementById('editWishInputs');
+const assignedNameEl = $('assignedName');
+const assignedWishes = $('assignedWishes');
+const assignedNote = $('assignedNote');
+const btnDone = $('btnDone');
+const btnLeaveResult = $('btnLeaveResult');
 
-const assignedPerson = document.getElementById('assignedPerson');
-const assignedWishes = document.getElementById('assignedWishes');
-const giftedPerson = document.getElementById('giftedPerson');
-
-const toast = document.getElementById('toast');
-
-// Local state
-let local = {
-  role: null,
+/* ========= App state ========= */
+let state = {
+  role: null,      // 'owner' or 'member'
   room: null,
-  name: null,
-  myUid: null,
-  isOwner: false,
-  wishes: []
+  uid: null,
+  name: null
 };
 
-// Wish counter for dynamic wish inputs
-let wishCount = 3;
-let wishCountJoin = 3;
-let editWishCount = 3;
-
-// Initialize the app
-function init() {
-  createSnowflakes();
-  setupEventListeners();
-  checkLocalStorage();
+/* ========= Helpers ========= */
+function showScreen(screenEl){
+  [home, lobby, result].forEach(s => s.classList.add('hidden'));
+  screenEl.classList.remove('hidden');
 }
 
-// Create snowflake animation
-function createSnowflakes() {
-  const snowflakesContainer = document.getElementById('snowflakes');
-  const snowflakeCount = 50;
-  
-  for (let i = 0; i < snowflakeCount; i++) {
-    const snowflake = document.createElement('div');
-    snowflake.className = 'snowflake';
-    snowflake.innerHTML = '❄';
-    snowflake.style.left = Math.random() * 100 + 'vw';
-    snowflake.style.animationDuration = Math.random() * 3 + 2 + 's';
-    snowflake.style.opacity = Math.random();
-    snowflake.style.fontSize = (Math.random() * 10 + 10) + 'px';
-    snowflakesContainer.appendChild(snowflake);
-  }
+function makeCode(len=5){
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let s="";
+  for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
 }
+function randomUid(){ return 'u'+Math.random().toString(36).slice(2,10); }
 
-// Set up event listeners
-function setupEventListeners() {
-  // Navigation buttons
-  btnCreate.addEventListener('click', showCreateScreen);
-  btnJoin.addEventListener('click', showJoinScreen);
-  btnLeave.addEventListener('click', leaveLobby);
-  btnDone.addEventListener('click', () => showScreen(lobbyScreen));
-  
-  // Create lobby
-  btnConfirmCreate.addEventListener('click', createLobby);
-  btnResetCreate.addEventListener('click', resetCreateForm);
-  btnAddWish.addEventListener('click', addWishInput);
-  
-  // Join lobby
-  btnConfirmJoin.addEventListener('click', joinLobby);
-  btnResetJoin.addEventListener('click', resetJoinForm);
-  btnAddWishJoin.addEventListener('click', addWishInputJoin);
-  
-  // Start draw
-  btnStartDraw.addEventListener('click', startDraw);
-  
-  // Edit wishlist
-  btnEditWishlist.addEventListener('click', showEditWishlist);
-  btnAddEditWish.addEventListener('click', addEditWishInput);
-  btnCancelEdit.addEventListener('click', () => showScreen(lobbyScreen));
-  btnSaveWishlist.addEventListener('click', saveWishlist);
-  
-  // Settings
-  btnSettings.addEventListener('click', showAdminSettings);
-  btnCancelSettings.addEventListener('click', () => showScreen(lobbyScreen));
-  btnSaveSettings.addEventListener('click', saveAdminSettings);
-  
-  // View wishlist from result screen
-  btnViewWishlist.addEventListener('click', showEditWishlist);
+/* ========== Persistence (localStorage) ========== */
+function saveLocal(){
+  if(!state.room || !state.uid) return;
+  localStorage.setItem('santa_room', state.room);
+  localStorage.setItem('santa_uid', state.uid);
+  localStorage.setItem('santa_role', state.role || '');
+  if(state.name) localStorage.setItem('santa_name', state.name);
 }
-
-// Check localStorage for existing session
-function checkLocalStorage() {
-  const savedRoom = localStorage.getItem('santa_room');
-  const savedUid = localStorage.getItem('santa_uid');
-  const savedName = localStorage.getItem('santa_name');
-  const savedRole = localStorage.getItem('santa_role');
-  
-  if (savedRoom && savedUid) {
-    local.room = savedRoom;
-    local.myUid = savedUid;
-    local.name = savedName;
-    local.role = savedRole;
-    local.isOwner = savedRole === 'owner';
-    
-    // Try to rejoin the room
-    rejoinRoom();
-  } else {
-    showScreen(homeScreen);
-  }
-}
-
-// Save to localStorage
-function saveToLocalStorage() {
-  if (local.room) localStorage.setItem('santa_room', local.room);
-  if (local.myUid) localStorage.setItem('santa_uid', local.myUid);
-  if (local.name) localStorage.setItem('santa_name', local.name);
-  if (local.role) localStorage.setItem('santa_role', local.role);
-}
-
-// Clear localStorage
-function clearLocalStorage() {
+function clearLocal(){
   localStorage.removeItem('santa_room');
   localStorage.removeItem('santa_uid');
-  localStorage.removeItem('santa_name');
   localStorage.removeItem('santa_role');
+  localStorage.removeItem('santa_name');
+}
+function loadLocal(){
+  const room = localStorage.getItem('santa_room');
+  const uid = localStorage.getItem('santa_uid');
+  const role = localStorage.getItem('santa_role');
+  const name = localStorage.getItem('santa_name');
+  if(room && uid){
+    state.room = room;
+    state.uid = uid;
+    state.role = role || null;
+    state.name = name || null;
+    return true;
+  }
+  return false;
 }
 
-// Show a specific screen
-function showScreen(screen) {
-  [homeScreen, createScreen, joinScreen, lobbyScreen, resultScreen, editWishlistScreen, adminSettingsScreen].forEach(s => {
-    s.classList.add('hidden');
+/* ========== Room listeners ========= */
+let membersRef = null;
+let roomRef = null;
+
+function listenRoom(room){
+  // cleanup previous
+  if(membersRef) membersRef.off();
+  if(roomRef) roomRef.off();
+
+  roomRef = db.ref('rooms/' + room);
+  membersRef = db.ref(`rooms/${room}/members`);
+
+  // member list
+  membersRef.on('value', snap => {
+    const val = snap.val() || {};
+    const arr = Object.entries(val).map(([uid,info]) => ({ uid, ...info }));
+    renderMembers(arr);
   });
-  screen.classList.remove('hidden');
-}
 
-// Show create screen
-function showCreateScreen() {
-  showScreen(createScreen);
-}
-
-// Show join screen
-function showJoinScreen() {
-  showScreen(joinScreen);
-}
-
-// Show edit wishlist screen
-function showEditWishlist() {
-  // Populate with current wishes
-  editWishInputs.innerHTML = '';
-  editWishCount = 0;
-  
-  local.wishes.forEach((wish, index) => {
-    editWishCount++;
-    const wishItem = document.createElement('div');
-    wishItem.className = 'wish-item';
-    wishItem.innerHTML = `
-      <input type="text" id="editWish${editWishCount}" class="form-control" placeholder="Wish ${editWishCount}" value="${wish}">
-      ${editWishCount > 3 ? `<button type="button" class="btn btn-secondary remove-wish" data-wish="${editWishCount}">
-        <i class="fas fa-times"></i>
-      </button>` : ''}
-    `;
-    editWishInputs.appendChild(wishItem);
-    
-    // Add event listener to remove button if it exists
-    if (editWishCount > 3) {
-      wishItem.querySelector('.remove-wish').addEventListener('click', function() {
-        if (editWishCount > 3) {
-          this.parentElement.remove();
-          editWishCount--;
+  // assignments: detect drawStarted and assignment for this uid
+  roomRef.child('drawStarted').on('value', snap => {
+    const started = snap.exists() && snap.val() === true;
+    if(started){
+      // try to load assignment stored under assignments/<uid>
+      db.ref(`rooms/${room}/assignments/${state.uid}`).get().then(asg=>{
+        if(asg.exists()){
+          showResult(asg.val());
+        } else {
+          // fallback to assignedToUid on member node
+          db.ref(`rooms/${room}/members/${state.uid}/assignedToUid`).get().then(a=>{
+            if(a.exists()){
+              const toUid = a.val();
+              db.ref(`rooms/${room}/members/${toUid}`).get().then(ts=>{
+                if(ts.exists()) showResult({ name: ts.val().name, wishes: ts.val().wishes || [] });
+              });
+            }
+          });
         }
       });
     }
-  });
-  
-  showScreen(editWishlistScreen);
-}
-
-// Show admin settings screen
-function showAdminSettings() {
-  if (!local.isOwner) return;
-  
-  // Populate with current settings
-  document.getElementById('editMinSpend').value = document.getElementById('minSpendDisplay').textContent;
-  document.getElementById('editMaxPlayers').value = document.getElementById('maxPlayersDisplay').textContent;
-  document.getElementById('editGiftDeadline').value = document.getElementById('deadlineDisplay').dataset.value || '';
-  document.getElementById('editTheme').value = document.getElementById('themeDisplay').textContent.toLowerCase();
-  
-  showScreen(adminSettingsScreen);
-}
-
-// Add wish input field
-function addWishInput() {
-  wishCount++;
-  const wishInputs = document.querySelector('#createScreen .wish-inputs');
-  const newWish = document.createElement('div');
-  newWish.className = 'wish-item';
-  newWish.innerHTML = `
-    <input type="text" id="createWish${wishCount}" class="form-control" placeholder="Wish ${wishCount}">
-    <button type="button" class="btn btn-secondary remove-wish" data-wish="${wishCount}">
-      <i class="fas fa-times"></i>
-    </button>
-  `;
-  wishInputs.appendChild(newWish);
-  
-  // Add event listener to remove button
-  newWish.querySelector('.remove-wish').addEventListener('click', function() {
-    if (wishCount > 3) {
-      this.parentElement.remove();
-      wishCount--;
-    }
+    // owner button state controlled in renderMembers
   });
 }
 
-// Add wish input field for join screen
-function addWishInputJoin() {
-  wishCountJoin++;
-  const wishInputs = document.querySelector('#joinScreen .wish-inputs');
-  const newWish = document.createElement('div');
-  newWish.className = 'wish-item';
-  newWish.innerHTML = `
-    <input type="text" id="joinWish${wishCountJoin}" class="form-control" placeholder="Wish ${wishCountJoin}">
-    <button type="button" class="btn btn-secondary remove-wish" data-wish="${wishCountJoin}">
-      <i class="fas fa-times"></i>
-    </button>
-  `;
-  wishInputs.appendChild(newWish);
-  
-  // Add event listener to remove button
-  newWish.querySelector('.remove-wish').addEventListener('click', function() {
-    if (wishCountJoin > 3) {
-      this.parentElement.remove();
-      wishCountJoin--;
-    }
+/* ========== Rendering ========== */
+function renderMembers(list){
+  memberListEl.innerHTML = '';
+  list.forEach(m=>{
+    const li = document.createElement('li');
+    li.textContent = m.name + (m.wishes ? ` — ${m.wishes.length} wishes` : '');
+    memberListEl.appendChild(li);
   });
+
+  // show owner controls if owner
+  if(state.role === 'owner'){
+    mustJoinForm.classList.add('hidden');      // owner already has joined
+    ownerControls.classList.remove('hidden');
+    memberControls.classList.add('hidden');
+    // enable start when >=3
+    btnStart.disabled = !(list.length >= 3);
+  } else {
+    // member view
+    ownerControls.classList.add('hidden');
+    memberControls.classList.remove('hidden');
+    // hide join form if already joined
+    const joined = list.some(m => m.name === state.name && state.uid);
+    if(joined) mustJoinForm.classList.add('hidden');
+    else mustJoinForm.classList.remove('hidden');
+  }
+  // keep room code updated
+  roomCodeEl.textContent = state.room || '—';
 }
 
-// Add wish input field for edit screen
-function addEditWishInput() {
-  editWishCount++;
-  const newWish = document.createElement('div');
-  newWish.className = 'wish-item';
-  newWish.innerHTML = `
-    <input type="text" id="editWish${editWishCount}" class="form-control" placeholder="Wish ${editWishCount}">
-    <button type="button" class="btn btn-secondary remove-wish" data-wish="${editWishCount}">
-      <i class="fas fa-times"></i>
-    </button>
-  `;
-  editWishInputs.appendChild(newWish);
-  
-  // Add event listener to remove button
-  newWish.querySelector('.remove-wish').addEventListener('click', function() {
-    if (editWishCount > 3) {
-      this.parentElement.remove();
-      editWishCount--;
-    }
-  });
-}
+/* ========== Flows ========== */
 
-// Reset create form
-function resetCreateForm() {
-  document.getElementById('createName').value = '';
-  document.getElementById('createWish1').value = '';
-  document.getElementById('createWish2').value = '';
-  document.getElementById('createWish3').value = '';
-  document.getElementById('minSpend').value = '50';
-  document.getElementById('maxPlayers').value = '10';
-  document.getElementById('giftDeadline').value = '';
-  document.getElementById('theme').value = 'christmas';
-  
-  // Remove additional wish inputs
-  const wishInputs = document.querySelector('#createScreen .wish-inputs');
-  while (wishInputs.children.length > 3) {
-    wishInputs.removeChild(wishInputs.lastChild);
-  }
-  wishCount = 3;
-}
-
-// Reset join form
-function resetJoinForm() {
-  document.getElementById('joinCode').value = '';
-  document.getElementById('joinName').value = '';
-  document.getElementById('joinWish1').value = '';
-  document.getElementById('joinWish2').value = '';
-  document.getElementById('joinWish3').value = '';
-  
-  // Remove additional wish inputs
-  const wishInputs = document.querySelector('#joinScreen .wish-inputs');
-  while (wishInputs.children.length > 3) {
-    wishInputs.removeChild(wishInputs.lastChild);
-  }
-  wishCountJoin = 3;
-}
-
-// Create a lobby
-async function createLobby() {
-  const name = document.getElementById('createName').value.trim();
-  const minSpend = document.getElementById('minSpend').value;
-  const maxPlayers = document.getElementById('maxPlayers').value;
-  const giftDeadline = document.getElementById('giftDeadline').value;
-  const theme = document.getElementById('theme').value;
-  
-  // Collect wishes
-  const wishes = [];
-  for (let i = 1; i <= wishCount; i++) {
-    const wish = document.getElementById(`createWish${i}`).value.trim();
-    if (wish) wishes.push(wish);
-  }
-  
-  // Validation
-  if (!name) {
-    showToast('Please enter your name');
-    return;
-  }
-  
-  if (wishes.length < 3) {
-    showToast('Please enter at least 3 wishes');
-    return;
-  }
-  
-  // Generate room code
+/* create room -> then owner should fill in their name/wishes and join */
+btnCreate.addEventListener('click', async ()=>{
   const code = makeCode(5);
-  const roomRef = db.ref('rooms/' + code);
-  const snapshot = await roomRef.get();
-  
-  if (snapshot.exists()) {
-    // If room exists, try again
-    return createLobby();
-  }
-  
-  // Create room
-  await roomRef.set({
-    owner: name,
-    minSpend: parseInt(minSpend),
-    maxPlayers: parseInt(maxPlayers),
-    giftDeadline: giftDeadline,
-    theme: theme,
-    createdAt: Date.now(),
-    drawStarted: false
-  });
-  
-  // Set local state
-  local.role = 'owner';
-  local.room = code;
-  local.name = name;
-  local.myUid = 'owner_' + Date.now();
-  local.isOwner = true;
-  local.wishes = wishes;
-  
-  // Join as owner
-  await joinRoom(code, true, { name, wishes });
-  
-  showToast('Lobby created successfully!');
-}
+  const roomRefLocal = db.ref('rooms/' + code);
+  const s = await roomRefLocal.get();
+  if(s.exists()) return btnCreate.click();
+  await roomRefLocal.set({ owner: "owner", createdAt: Date.now(), drawStarted: false });
+  state.role = 'owner';
+  state.room = code;
+  state.uid = randomUid();
+  // Save then open lobby and let owner fill details
+  saveLocal();
+  listenRoom(state.room);
+  showScreen(lobby);
+  roomCodeEl.textContent = state.room;
+  // owner needs to still 'join' as a member (but we will hide the join form automatically if owner)
+  mustJoinForm.classList.remove('hidden');
+});
 
-// Join a lobby
-async function joinLobby() {
-  const code = document.getElementById('joinCode').value.trim().toUpperCase();
-  const name = document.getElementById('joinName').value.trim();
-  
-  // Collect wishes
-  const wishes = [];
-  for (let i = 1; i <= wishCountJoin; i++) {
-    const wish = document.getElementById(`joinWish${i}`).value.trim();
-    if (wish) wishes.push(wish);
-  }
-  
-  // Validation
-  if (!code) {
-    showToast('Please enter a lobby code');
-    return;
-  }
-  
-  if (!name) {
-    showToast('Please enter your name');
-    return;
-  }
-  
-  if (wishes.length < 3) {
-    showToast('Please enter at least 3 wishes');
-    return;
-  }
-  
-  // Check if room exists
-  const roomRef = db.ref('rooms/' + code);
-  const snap = await roomRef.get();
-  
-  if (!snap.exists()) {
-    showToast('Room not found. Check the code.');
-    return;
-  }
-  
-  // Check if draw has already started
-  const roomData = snap.val();
-  if (roomData.drawStarted) {
-    showToast('The draw has already started in this room');
-    return;
-  }
-  
-  // Check if room is full
-  const membersSnap = await roomRef.child('members').get();
-  const members = membersSnap.val() || {};
-  if (Object.keys(members).length >= roomData.maxPlayers) {
-    showToast('This room is already full');
-    return;
-  }
-  
-  // Set local state
-  local.role = 'member';
-  local.room = code;
-  local.name = name;
-  local.myUid = 'member_' + Date.now();
-  local.isOwner = false;
-  local.wishes = wishes;
-  
-  // Join room
-  await joinRoom(code, false, { name, wishes });
-  
-  showToast('Joined lobby successfully!');
-}
+/* join button from home simply shows lobby with join form */
+btnJoin.addEventListener('click', ()=>{
+  // show blank join for user to input code first (we'll ask in-place)
+  // Prompt for room code quickly with a browser prompt for simplicity
+  const code = prompt('Enter room code (from the host):') || '';
+  if(!code) return;
+  state.room = code.trim().toUpperCase();
+  state.uid = randomUid();
+  state.role = 'member';
+  saveLocal();
+  listenRoom(state.room);
+  showScreen(lobby);
+  roomCodeEl.textContent = state.room;
+  mustJoinForm.classList.remove('hidden');
+});
 
-// Join room function
-async function joinRoom(room, asOwner = false, payload) {
-  const memberRef = db.ref(`rooms/${room}/members/${local.myUid}`);
-  
-  await memberRef.set({
-    name: payload.name,
-    wishes: payload.wishes,
+/* Back home from lobby: clear local only if not joined */
+btnBackHome.addEventListener('click', ()=>{
+  // if joined, keep localStorage; simply show home to allow navigation
+  showScreen(home);
+});
+
+/* Submit join (both owner and member use same form) */
+btnSubmitJoin.addEventListener('click', async ()=>{
+  const name = joinName.value.trim();
+  const w1 = wish1.value.trim();
+  const w2 = wish2.value.trim();
+  const w3 = wish3.value.trim();
+  if(!state.room) return alert('No room selected.');
+  if(!name || !w1 || !w2 || !w3) return alert('Please enter name and three wishes.');
+
+  state.name = name;
+  saveLocal();
+
+  // write member node
+  if(!state.uid) state.uid = randomUid();
+  await db.ref(`rooms/${state.room}/members/${state.uid}`).set({
+    name,
+    wishes: [w1,w2,w3],
     joinedAt: Date.now()
   });
-  
-  // Save to localStorage
-  saveToLocalStorage();
-  
-  // Update UI
-  homeButtons.classList.add('hidden');
-  playerListContainer.classList.remove('hidden');
-  lobbyControls.classList.remove('hidden');
-  
-  if (asOwner) {
-    btnStartDraw.classList.remove('hidden');
-    btnSettings.classList.remove('hidden');
-  } else {
-    btnStartDraw.classList.add('hidden');
-    btnSettings.classList.add('hidden');
-  }
-  
-  // Start listening to room updates
-  listenRoom(room);
-  
-  // Show lobby screen
-  showScreen(lobbyScreen);
-  document.getElementById('lobbyCodeDisplay').textContent = room;
-  
-  // Display room settings
-  const roomRef = db.ref('rooms/' + room);
-  const roomSnap = await roomRef.get();
-  if (roomSnap.exists()) {
-    const roomData = roomSnap.val();
-    document.getElementById('minSpendDisplay').textContent = roomData.minSpend || 50;
-    document.getElementById('maxPlayersDisplay').textContent = roomData.maxPlayers || 10;
-    
-    if (roomData.giftDeadline) {
-      document.getElementById('deadlineDisplay').textContent = new Date(roomData.giftDeadline).toLocaleDateString();
-      document.getElementById('deadlineDisplay').dataset.value = roomData.giftDeadline;
-    } else {
-      document.getElementById('deadlineDisplay').textContent = 'Not set';
-    }
-    
-    document.getElementById('themeDisplay').textContent = roomData.theme ? roomData.theme.charAt(0).toUpperCase() + roomData.theme.slice(1) : 'Christmas';
-  }
-}
 
-// Rejoin room
-async function rejoinRoom() {
-  const roomRef = db.ref('rooms/' + local.room);
-  const snap = await roomRef.get();
-  
-  if (!snap.exists()) {
-    showToast('The room no longer exists');
-    clearLocalStorage();
-    showScreen(homeScreen);
-    return;
+  // if owner, set owner field
+  if(state.role === 'owner') {
+    await db.ref(`rooms/${state.room}/owner`).set(name);
   }
-  
-  const roomData = snap.val();
-  
-  // Check if user is still in the room
-  const memberRef = db.ref(`rooms/${local.room}/members/${local.myUid}`);
-  const memberSnap = await memberRef.get();
-  
-  if (!memberSnap.exists()) {
-    showToast('You are no longer in this room');
-    clearLocalStorage();
-    showScreen(homeScreen);
-    return;
-  }
-  
-  // Get user's wishes
-  const memberData = memberSnap.val();
-  local.wishes = memberData.wishes || [];
-  
-  // Update UI
-  homeButtons.classList.add('hidden');
-  playerListContainer.classList.remove('hidden');
-  lobbyControls.classList.remove('hidden');
-  
-  if (local.isOwner) {
-    btnStartDraw.classList.remove('hidden');
-    btnSettings.classList.remove('hidden');
-    
-    // Check if draw has already started
-    if (roomData.drawStarted) {
-      btnStartDraw.disabled = true;
-      btnStartDraw.textContent = 'Draw Completed';
-    }
-  } else {
-    btnStartDraw.classList.add('hidden');
-    btnSettings.classList.add('hidden');
-    
-    // Check if draw has happened and show result
-    if (roomData.drawStarted) {
-      showDrawResult();
-    }
-  }
-  
-  // Start listening to room updates
-  listenRoom(local.room);
-  
-  // Show appropriate screen
-  if (roomData.drawStarted) {
-    showScreen(resultScreen);
-    showDrawResult();
-  } else {
-    showScreen(lobbyScreen);
-    document.getElementById('lobbyCodeDisplay').textContent = local.room;
-    document.getElementById('minSpendDisplay').textContent = roomData.minSpend || 50;
-    document.getElementById('maxPlayersDisplay').textContent = roomData.maxPlayers || 10;
-    
-    if (roomData.giftDeadline) {
-      document.getElementById('deadlineDisplay').textContent = new Date(roomData.giftDeadline).toLocaleDateString();
-      document.getElementById('deadlineDisplay').dataset.value = roomData.giftDeadline;
-    } else {
-      document.getElementById('deadlineDisplay').textContent = 'Not set';
-    }
-    
-    document.getElementById('themeDisplay').textContent = roomData.theme ? roomData.theme.charAt(0).toUpperCase() + roomData.theme.slice(1) : 'Christmas';
-  }
-}
 
-// Listen for room updates
-function listenRoom(room) {
-  const membersRef = db.ref(`rooms/${room}/members`);
-  const roomRef = db.ref('rooms/' + room);
-  
-  membersRef.on('value', snap => {
-    const members = snap.val() || {};
-    const membersArr = Object.entries(members).map(([uid, info]) => ({ uid, ...info }));
-    
-    renderPlayerList(membersArr);
-    
-    // Check if current user is still in the room
-    if (!members[local.myUid]) {
-      // User was kicked or removed
-      showToast('You have been removed from the lobby');
-      clearLocalStorage();
-      showScreen(homeScreen);
-      return;
-    }
-    
-    // Update local wishes if they changed
-    if (members[local.myUid].wishes) {
-      local.wishes = members[local.myUid].wishes;
-    }
-  });
-  
-  roomRef.on('value', snap => {
-    const roomData = snap.val();
-    if (!roomData) return;
-    
-    // Update settings display
-    document.getElementById('minSpendDisplay').textContent = roomData.minSpend || 50;
-    document.getElementById('maxPlayersDisplay').textContent = roomData.maxPlayers || 10;
-    
-    if (roomData.giftDeadline) {
-      document.getElementById('deadlineDisplay').textContent = new Date(roomData.giftDeadline).toLocaleDateString();
-      document.getElementById('deadlineDisplay').dataset.value = roomData.giftDeadline;
-    } else {
-      document.getElementById('deadlineDisplay').textContent = 'Not set';
-    }
-    
-    document.getElementById('themeDisplay').textContent = roomData.theme ? roomData.theme.charAt(0).toUpperCase() + roomData.theme.slice(1) : 'Christmas';
-    
-    // Check if draw has started
-    if (roomData.drawStarted) {
-      showDrawResult();
-      
-      if (local.isOwner) {
-        btnStartDraw.disabled = true;
-        btnStartDraw.textContent = 'Draw Completed';
-      }
-    }
-  });
-}
+  // update UI
+  mustJoinForm.classList.add('hidden');
+  memberControls.classList.remove('hidden');
+  ownerControls.classList.remove('hidden');
+});
 
-// Render player list
-function renderPlayerList(players) {
-  playerList.innerHTML = '';
-  
-  players.forEach(player => {
-    const playerItem = document.createElement('div');
-    playerItem.className = 'player-item';
-    playerItem.textContent = player.name;
-    
-    // Add click event to show player details
-    playerItem.addEventListener('click', () => {
-      showPlayerDetails(player);
-    });
-    
-    // Add kick button for owner (except themselves)
-    if (local.isOwner && player.uid !== local.myUid && !local.roomData?.drawStarted) {
-      const kickBtn = document.createElement('button');
-      kickBtn.className = 'kick-button';
-      kickBtn.innerHTML = '<i class="fas fa-user-times"></i>';
-      kickBtn.title = 'Kick player';
-      kickBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        kickPlayer(player.uid);
-      });
-      playerItem.appendChild(kickBtn);
-    }
-    
-    playerList.appendChild(playerItem);
-  });
-}
-
-// Show player details
-function showPlayerDetails(player) {
-  selectedPlayerName.textContent = player.name;
-  selectedPlayerWishes.innerHTML = '';
-  
-  if (player.wishes && player.wishes.length > 0) {
-    player.wishes.forEach(wish => {
-      const li = document.createElement('li');
-      li.textContent = wish;
-      selectedPlayerWishes.appendChild(li);
-    });
-  } else {
-    const li = document.createElement('li');
-    li.textContent = 'No wishes listed';
-    selectedPlayerWishes.appendChild(li);
-  }
-  
-  playerDetails.classList.remove('hidden');
-}
-
-// Kick a player
-async function kickPlayer(uid) {
-  if (!local.isOwner) return;
-  
-  if (confirm('Are you sure you want to kick this player?')) {
-    await db.ref(`rooms/${local.room}/members/${uid}`).remove();
-    showToast('Player kicked');
-    
-    // Clear player details if the kicked player was being viewed
-    const memberSnap = await db.ref(`rooms/${local.room}/members/${uid}`).get();
-    if (!memberSnap.exists()) {
-      playerDetails.classList.add('hidden');
-    }
-  }
-}
-
-// Save wishlist
-async function saveWishlist() {
-  // Collect wishes
-  const wishes = [];
-  for (let i = 1; i <= editWishCount; i++) {
-    const wishInput = document.getElementById(`editWish${i}`);
-    if (wishInput) {
-      const wish = wishInput.value.trim();
-      if (wish) wishes.push(wish);
-    }
-  }
-  
-  if (wishes.length < 3) {
-    showToast('Please enter at least 3 wishes');
-    return;
-  }
-  
-  // Update in Firebase
-  await db.ref(`rooms/${local.room}/members/${local.myUid}/wishes`).set(wishes);
-  
-  // Update local state
-  local.wishes = wishes;
-  
-  showToast('Wishlist updated successfully!');
-  showScreen(lobbyScreen);
-}
-
-// Save admin settings
-async function saveAdminSettings() {
-  if (!local.isOwner) return;
-  
-  const minSpend = document.getElementById('editMinSpend').value;
-  const maxPlayers = document.getElementById('editMaxPlayers').value;
-  const giftDeadline = document.getElementById('editGiftDeadline').value;
-  const theme = document.getElementById('editTheme').value;
-  
-  const updates = {};
-  updates[`rooms/${local.room}/minSpend`] = parseInt(minSpend);
-  updates[`rooms/${local.room}/maxPlayers`] = parseInt(maxPlayers);
-  updates[`rooms/${local.room}/giftDeadline`] = giftDeadline;
-  updates[`rooms/${local.room}/theme`] = theme;
-  
-  await db.ref().update(updates);
-  
-  showToast('Settings updated successfully!');
-  showScreen(lobbyScreen);
-}
-
-// Start the draw
-async function startDraw() {
-  if (!local.isOwner) return;
-  
-  const room = local.room;
+/* Start draw (owner only) */
+btnStart.addEventListener('click', async ()=>{
+  if(state.role !== 'owner') return alert('Only owner can start.');
+  const room = state.room;
   const membersSnap = await db.ref(`rooms/${room}/members`).get();
   const members = membersSnap.val();
-  
-  if (!members) {
-    showToast('No members found');
-    return;
-  }
-  
-  const entries = Object.entries(members).map(([uid, info]) => ({ 
-    uid, 
-    name: info.name, 
-    wishes: info.wishes || [] 
-  }));
-  
-  if (entries.length < 3) {
-    showToast('Need at least 3 players to start the draw');
-    return;
-  }
-  
-  const uids = entries.map(e => e.uid);
+  if(!members) return alert('No members.');
+  const entries = Object.entries(members).map(([uid,info])=>({ uid, name: info.name, wishes: info.wishes || [] }));
+  if(entries.length < 3) return alert('Need at least 3 members.');
+
+  const uids = entries.map(e=>e.uid);
   const assigned = derangement(uids);
-  
-  if (!assigned) {
-    showToast('Could not create assignments. Try again.');
-    return;
-  }
-  
+  if(!assigned) return alert('Assignment failed, try again.');
+
   const updates = {};
-  for (let i = 0; i < uids.length; i++) {
+  for(let i=0;i<uids.length;i++){
     const from = uids[i];
     const to = assigned[i];
-    const target = entries.find(e => e.uid === to);
-    
+    const target = entries.find(x=>x.uid===to);
     updates[`rooms/${room}/members/${from}/assignedToUid`] = to;
     updates[`rooms/${room}/assignments/${from}`] = {
       toUid: to,
@@ -812,148 +278,115 @@ async function startDraw() {
       wishes: target.wishes || []
     };
   }
-  
   updates[`rooms/${room}/drawStarted`] = true;
-  
   await db.ref().update(updates);
-  
-  // Show gift animation for the owner
-  showGiftAnimation(entries.find(e => e.uid === assigned[uids.indexOf(local.myUid)]).name);
-}
+  alert('Draw finished — each person can now see their assigned person.');
+});
 
-// Show gift animation
-function showGiftAnimation(personName) {
-  giftedPerson.textContent = personName;
-  giftAnimation.classList.remove('hidden');
-  
-  setTimeout(() => {
-    giftAnimation.classList.add('hidden');
-    showDrawResult();
-  }, 3000);
-}
+/* Close room (owner) */
+btnCloseRoom.addEventListener('click', async ()=>{
+  if(state.role !== 'owner') return;
+  if(!state.room) return;
+  if(!confirm('Close this room and remove data? This cannot be undone.')) return;
+  await db.ref(`rooms/${state.room}`).remove();
+  clearLocal();
+  state = { role:null, room:null, uid:null, name:null };
+  showScreen(home);
+});
 
-// Show draw result
-async function showDrawResult() {
-  const assignmentRef = db.ref(`rooms/${local.room}/assignments/${local.myUid}`);
-  const assignmentSnap = await assignmentRef.get();
-  
-  if (assignmentSnap.exists()) {
-    const assignment = assignmentSnap.val();
-    
-    assignedPerson.textContent = assignment.name;
-    assignedWishes.innerHTML = '';
-    
-    if (assignment.wishes && assignment.wishes.length > 0) {
-      assignment.wishes.forEach(wish => {
-        const li = document.createElement('li');
-        li.textContent = wish;
-        assignedWishes.appendChild(li);
-      });
-    } else {
-      const li = document.createElement('li');
-      li.textContent = 'No wishes listed';
-      assignedWishes.appendChild(li);
-    }
-    
-    showScreen(resultScreen);
-    
-    // Highlight the assigned player in the player list
-    const playerItems = document.querySelectorAll('.player-item');
-    playerItems.forEach(item => {
-      if (item.textContent.includes(assignment.name)) {
-        item.classList.add('assigned');
+/* Member leave */
+btnLeave.addEventListener('click', async ()=>{
+  if(!state.room || !state.uid) return showScreen(home);
+  await db.ref(`rooms/${state.room}/members/${state.uid}`).remove();
+  clearLocal();
+  state = { role:null, room:null, uid:null, name:null };
+  showScreen(home);
+});
+
+/* Result screen leave/done */
+btnDone.addEventListener('click', ()=>{
+  showScreen(home);
+});
+btnLeaveResult.addEventListener('click', async ()=>{
+  // same as leave
+  if(state.room && state.uid) await db.ref(`rooms/${state.room}/members/${state.uid}`).remove();
+  clearLocal();
+  state = { role:null, room:null, uid:null, name:null };
+  showScreen(home);
+});
+
+/* ========== Auto rejoin on load ========== */
+window.addEventListener('load', async ()=>{
+  // wire up ownerControls element (exists but hidden initial)
+  ownerControls.classList.add('hidden');
+  memberControls.classList.add('hidden');
+
+  // try load local
+  const ok = loadLocal();
+  if(ok && state.room && state.uid){
+    // check room exists
+    const r = await db.ref(`rooms/${state.room}`).get();
+    if(r.exists()){
+      // ensure listener installed and show lobby
+      listenRoom(state.room);
+      showScreen(lobby);
+      roomCodeEl.textContent = state.room;
+      // if user is member and assignments already exist, show result immediately
+      const draw = await db.ref(`rooms/${state.room}/drawStarted`).get();
+      if(draw.exists() && draw.val() === true){
+        // read assignment
+        const a = await db.ref(`rooms/${state.room}/assignments/${state.uid}`).get();
+        if(a.exists()){
+          showResult(a.val());
+          return;
+        }
+        const a2 = await db.ref(`rooms/${state.room}/members/${state.uid}/assignedToUid`).get();
+        if(a2.exists()){
+          const toUid = a2.val();
+          const ts = await db.ref(`rooms/${state.room}/members/${toUid}`).get();
+          if(ts.exists()) showResult({ name: ts.val().name, wishes: ts.val().wishes || [] });
+          return;
+        }
       }
-    });
-    
-    // Disable leave button after draw
-    btnLeave.disabled = true;
-    btnLeave.textContent = 'Cannot leave after draw';
-  }
-}
-
-// Leave the lobby
-async function leaveLobby() {
-  // Check if draw has started
-  const roomRef = db.ref('rooms/' + local.room);
-  const roomSnap = await roomRef.get();
-  const roomData = roomSnap.val();
-  
-  if (roomData.drawStarted && !local.isOwner) {
-    showToast('Cannot leave after the draw has started');
-    return;
-  }
-  
-  if (local.room && local.myUid) {
-    // Remove user from members list
-    await db.ref(`rooms/${local.room}/members/${local.myUid}`).remove();
-    
-    // If owner leaves, delete the room
-    if (local.isOwner) {
-      await db.ref(`rooms/${local.room}`).remove();
+      // else stay in lobby
+      return;
+    } else {
+      // room not found -> clear and go home
+      clearLocal();
+      state = { role:null, room:null, uid:null, name:null };
     }
   }
-  
-  // Clear local state
-  local = {
-    role: null,
-    room: null,
-    name: null,
-    myUid: null,
-    isOwner: false,
-    wishes: []
-  };
-  
-  clearLocalStorage();
-  
-  // Reset UI
-  homeButtons.classList.remove('hidden');
-  playerListContainer.classList.add('hidden');
-  lobbyControls.classList.add('hidden');
-  playerDetails.classList.add('hidden');
-  btnLeave.disabled = false;
-  btnLeave.textContent = 'Leave Lobby';
-  
-  showScreen(homeScreen);
-  showToast('Left the lobby');
-}
+  showScreen(home);
+});
 
-// Utility function to generate room code
-function makeCode(len = 5) {
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  let s = "";
-  for (let i = 0; i < len; i++) {
-    s += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return s;
-}
-
-// Derangement algorithm for Secret Santa assignment
-function derangement(uids) {
-  function shuffle(a) {
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
+/* ========== Derangement (no self assignment) ========== */
+function derangement(uids){
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
     }
-    return a;
   }
-  
-  for (let t = 0; t < 200; t++) {
+  const max=500;
+  for(let t=0;t<max;t++){
     const copy = uids.slice();
     shuffle(copy);
-    if (uids.every((u, i) => u !== copy[i])) return copy;
+    if(uids.every((u,i)=>u!==copy[i])) return copy;
   }
   return null;
 }
 
-// Show toast notification
-function showToast(message) {
-  toast.textContent = message;
-  toast.classList.add('show');
-  
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, 3000);
+/* ========== Show result UI ========== */
+function showResult(obj){
+  showScreen(result);
+  assignedNameEl.textContent = obj.name || '—';
+  assignedWishes.innerHTML = '';
+  if(Array.isArray(obj.wishes)){
+    obj.wishes.forEach(w=>{
+      const li = document.createElement('li');
+      li.textContent = w;
+      assignedWishes.appendChild(li);
+    });
+  }
+  assignedNote.textContent = "Saved to your device — come back anytime to view.";
 }
-
-// Initialize the app
-init();
