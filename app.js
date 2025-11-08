@@ -21,6 +21,7 @@ const joinScreen = document.getElementById('joinScreen');
 const lobbyScreen = document.getElementById('lobbyScreen');
 const resultScreen = document.getElementById('resultScreen');
 const menuModal = document.getElementById('menuModal');
+const playerModal = document.getElementById('playerModal');
 
 const btnCreate = document.getElementById('btnCreate');
 const btnJoin = document.getElementById('btnJoin');
@@ -57,15 +58,36 @@ let local = {
   wishes: []
 };
 
-// Wish counters
+// Wish counters and tracking
 let wishCount = 3;
 let wishCountJoin = 3;
 let editWishCount = 3;
+let joinInProgress = false;
+
+// Festive profile icons
+const festiveIcons = ['🎅', '🤶', '🦌', '🎄', '⭐', '🎁', '🔔', '❄️', '🧦', '🕯️'];
 
 // Initialize the app
 function init() {
   setupEventListeners();
   checkLocalStorage();
+  preventPullToRefresh();
+}
+
+// Prevent pull-to-refresh on mobile
+function preventPullToRefresh() {
+  let startY;
+  document.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  
+  document.addEventListener('touchmove', e => {
+    const y = e.touches[0].clientY;
+    // If scrolling up or at the top, allow it
+    if (window.scrollY === 0 && y > startY) {
+      e.preventDefault();
+    }
+  }, { passive: false });
 }
 
 // Set up event listeners
@@ -164,35 +186,78 @@ function closeModal(modalId) {
 
 // Add wish input field
 function addWishInput(type) {
-  let container, prefix;
+  let container, prefix, countRef;
   
   switch(type) {
     case 'create':
       wishCount++;
       container = document.querySelector('#createScreen .input-group:nth-child(2)');
       prefix = 'createWish';
+      countRef = wishCount;
       break;
     case 'join':
       wishCountJoin++;
       container = document.querySelector('#joinScreen .input-group:nth-child(3)');
       prefix = 'joinWish';
+      countRef = wishCountJoin;
       break;
     case 'edit':
       editWishCount++;
       container = document.getElementById('editWishInputs');
       prefix = 'editWish';
+      countRef = editWishCount;
       break;
   }
   
+  const inputGroup = document.createElement('div');
+  inputGroup.className = 'wish-input-group';
+  
   const newInput = document.createElement('input');
   newInput.type = 'text';
-  newInput.id = `${prefix}${type === 'create' ? wishCount : type === 'join' ? wishCountJoin : editWishCount}`;
+  newInput.id = `${prefix}${countRef}`;
   newInput.className = 'form-input';
-  newInput.placeholder = `🎁 Wish ${type === 'create' ? wishCount : type === 'join' ? wishCountJoin : editWishCount}`;
+  newInput.placeholder = `🎁 Wish ${countRef}`;
+  
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'remove-wish-btn';
+  removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+  removeBtn.onclick = () => removeWishInput(type, countRef);
+  
+  inputGroup.appendChild(newInput);
+  inputGroup.appendChild(removeBtn);
   
   // Insert before the add button
   const addButton = container.querySelector('.add-more-btn');
-  container.insertBefore(newInput, addButton);
+  container.insertBefore(inputGroup, addButton);
+}
+
+// Remove wish input field
+function removeWishInput(type, index) {
+  let container, prefix;
+  
+  switch(type) {
+    case 'create':
+      container = document.querySelector('#createScreen .input-group:nth-child(2)');
+      prefix = 'createWish';
+      wishCount--;
+      break;
+    case 'join':
+      container = document.querySelector('#joinScreen .input-group:nth-child(3)');
+      prefix = 'joinWish';
+      wishCountJoin--;
+      break;
+    case 'edit':
+      container = document.getElementById('editWishInputs');
+      prefix = 'editWish';
+      editWishCount--;
+      break;
+  }
+  
+  const inputToRemove = document.getElementById(`${prefix}${index}`);
+  if (inputToRemove) {
+    inputToRemove.parentElement.remove();
+  }
 }
 
 // Create a lobby
@@ -203,14 +268,7 @@ async function createLobby() {
   const giftDeadline = document.getElementById('giftDeadline').value;
   
   // Collect wishes
-  const wishes = [];
-  for (let i = 1; i <= wishCount; i++) {
-    const wishInput = document.getElementById(`createWish${i}`);
-    if (wishInput) {
-      const wish = wishInput.value.trim();
-      if (wish) wishes.push(wish);
-    }
-  }
+  const wishes = collectWishes('create');
   
   // Validation
   if (!name) {
@@ -257,71 +315,135 @@ async function createLobby() {
 
 // Join a lobby
 async function joinLobby() {
-  const code = document.getElementById('joinCode').value.trim().toUpperCase();
-  const name = document.getElementById('joinName').value.trim();
+  if (joinInProgress) {
+    showToast('Please wait...');
+    return;
+  }
   
-  // Collect wishes
+  joinInProgress = true;
+  btnConfirmJoin.disabled = true;
+  btnConfirmJoin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Joining...';
+  
+  try {
+    const code = document.getElementById('joinCode').value.trim().toUpperCase();
+    const name = document.getElementById('joinName').value.trim();
+    
+    // Collect wishes
+    const wishes = collectWishes('join');
+    
+    // Validation
+    if (!code) {
+      showToast('Please enter a lobby code');
+      return;
+    }
+    
+    if (!name) {
+      showToast('Please enter your name');
+      return;
+    }
+    
+    if (wishes.length < 3) {
+      showToast('Please enter at least 3 wishes');
+      return;
+    }
+    
+    // Check if room exists
+    const roomRef = db.ref('rooms/' + code);
+    const snap = await roomRef.get();
+    
+    if (!snap.exists()) {
+      showToast('Room not found');
+      return;
+    }
+    
+    const roomData = snap.val();
+    if (roomData.drawStarted) {
+      showToast('Draw has already started');
+      return;
+    }
+    
+    // Check for duplicate names
+    const membersRef = db.ref(`rooms/${code}/members`);
+    const membersSnap = await membersRef.get();
+    const members = membersSnap.val() || {};
+    
+    const existingNames = Object.values(members).map(member => member.name.toLowerCase());
+    if (existingNames.includes(name.toLowerCase())) {
+      showToast('Name already taken in this lobby');
+      return;
+    }
+    
+    // Set local state
+    local.role = 'member';
+    local.room = code;
+    local.name = name;
+    local.myUid = 'member_' + Date.now();
+    local.isOwner = false;
+    local.wishes = wishes;
+    
+    // Join room
+    await joinRoom(code, false, { name, wishes });
+    showToast('Joined lobby!');
+  } finally {
+    joinInProgress = false;
+    btnConfirmJoin.disabled = false;
+    btnConfirmJoin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Join Lobby';
+  }
+}
+
+// Collect wishes from inputs
+function collectWishes(type) {
   const wishes = [];
-  for (let i = 1; i <= wishCountJoin; i++) {
-    const wishInput = document.getElementById(`joinWish${i}`);
+  let count;
+  
+  switch(type) {
+    case 'create':
+      count = wishCount;
+      break;
+    case 'join':
+      count = wishCountJoin;
+      break;
+    case 'edit':
+      count = editWishCount;
+      break;
+  }
+  
+  for (let i = 1; i <= count; i++) {
+    let wishInput;
+    switch(type) {
+      case 'create':
+        wishInput = document.getElementById(`createWish${i}`);
+        break;
+      case 'join':
+        wishInput = document.getElementById(`joinWish${i}`);
+        break;
+      case 'edit':
+        wishInput = document.getElementById(`editWish${i}`);
+        break;
+    }
+    
     if (wishInput) {
       const wish = wishInput.value.trim();
       if (wish) wishes.push(wish);
     }
   }
   
-  // Validation
-  if (!code) {
-    showToast('Please enter a lobby code');
-    return;
-  }
-  
-  if (!name) {
-    showToast('Please enter your name');
-    return;
-  }
-  
-  if (wishes.length < 3) {
-    showToast('Please enter at least 3 wishes');
-    return;
-  }
-  
-  // Check if room exists
-  const roomRef = db.ref('rooms/' + code);
-  const snap = await roomRef.get();
-  
-  if (!snap.exists()) {
-    showToast('Room not found');
-    return;
-  }
-  
-  const roomData = snap.val();
-  if (roomData.drawStarted) {
-    showToast('Draw has already started');
-    return;
-  }
-  
-  // Set local state
-  local.role = 'member';
-  local.room = code;
-  local.name = name;
-  local.myUid = 'member_' + Date.now();
-  local.isOwner = false;
-  local.wishes = wishes;
-  
-  // Join room
-  await joinRoom(code, false, { name, wishes });
-  showToast('Joined lobby!');
+  return wishes;
 }
 
 // Join room function
 async function joinRoom(room, asOwner, payload) {
   const memberRef = db.ref(`rooms/${room}/members/${local.myUid}`);
   
+  // Generate festive icon for user
+  const iconIndex = Math.floor(Math.random() * festiveIcons.length);
+  const festiveIcon = festiveIcons[iconIndex];
+  
   await memberRef.set({
     name: payload.name,
     wishes: payload.wishes,
-    joinedAt: Date.now()
+    joinedAt: Date.now(),
+    icon: festiveIcon
   });
   
   // Save to localStorage
@@ -333,9 +455,36 @@ async function joinRoom(room, asOwner, payload) {
   
   // Populate user data
   document.getElementById('playerName').value = payload.name;
-  document.getElementById('editWish1').value = payload.wishes[0] || '';
-  document.getElementById('editWish2').value = payload.wishes[1] || '';
-  document.getElementById('editWish3').value = payload.wishes[2] || '';
+  
+  // Clear existing wish inputs and recreate
+  const editWishContainer = document.getElementById('editWishInputs');
+  editWishContainer.innerHTML = '';
+  
+  payload.wishes.forEach((wish, index) => {
+    const inputGroup = document.createElement('div');
+    inputGroup.className = 'wish-input-group';
+    
+    const wishInput = document.createElement('input');
+    wishInput.type = 'text';
+    wishInput.id = `editWish${index + 1}`;
+    wishInput.className = 'form-input';
+    wishInput.placeholder = `🎁 Wish ${index + 1}`;
+    wishInput.value = wish;
+    
+    if (index >= 3) {
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'remove-wish-btn';
+      removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+      removeBtn.onclick = () => removeWishInput('edit', index + 1);
+      inputGroup.appendChild(removeBtn);
+    }
+    
+    inputGroup.appendChild(wishInput);
+    editWishContainer.appendChild(inputGroup);
+  });
+  
+  editWishCount = Math.max(3, payload.wishes.length);
   
   // Show admin controls if owner
   if (asOwner) {
@@ -384,9 +533,36 @@ async function rejoinRoom() {
   
   // Populate user data
   document.getElementById('playerName').value = local.name;
-  document.getElementById('editWish1').value = local.wishes[0] || '';
-  document.getElementById('editWish2').value = local.wishes[1] || '';
-  document.getElementById('editWish3').value = local.wishes[2] || '';
+  
+  // Clear and recreate wish inputs
+  const editWishContainer = document.getElementById('editWishInputs');
+  editWishContainer.innerHTML = '';
+  
+  local.wishes.forEach((wish, index) => {
+    const inputGroup = document.createElement('div');
+    inputGroup.className = 'wish-input-group';
+    
+    const wishInput = document.createElement('input');
+    wishInput.type = 'text';
+    wishInput.id = `editWish${index + 1}`;
+    wishInput.className = 'form-input';
+    wishInput.placeholder = `🎁 Wish ${index + 1}`;
+    wishInput.value = wish;
+    
+    if (index >= 3) {
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'remove-wish-btn';
+      removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+      removeBtn.onclick = () => removeWishInput('edit', index + 1);
+      inputGroup.appendChild(removeBtn);
+    }
+    
+    inputGroup.appendChild(wishInput);
+    editWishContainer.appendChild(inputGroup);
+  });
+  
+  editWishCount = Math.max(3, local.wishes.length);
   
   // Show admin controls if owner
   if (local.isOwner) {
@@ -493,18 +669,58 @@ function renderPlayerList(players) {
       playerCard.classList.add('assigned');
     }
     
+    // Check if this is the current user
+    const isCurrentUser = player.uid === local.myUid;
+    const displayName = isCurrentUser ? `${player.name} (you)` : player.name;
+    
     playerCard.innerHTML = `
-      <div class="player-name">${player.name}</div>
-      ${player.wishes && player.wishes.length > 0 ? `
-        <div class="player-wish">
-          <i class="fas fa-gift"></i>
-          ${player.wishes[0]}
+      <div class="player-info">
+        <div class="player-icon">${player.icon || '🎅'}</div>
+        <div class="player-details">
+          <div class="player-name">${displayName}</div>
+          ${player.wishes && player.wishes.length > 0 ? `
+            <div class="player-wish">
+              <i class="fas fa-gift"></i>
+              ${player.wishes[0]}
+            </div>
+          ` : ''}
         </div>
-      ` : ''}
+      </div>
     `;
+    
+    // Only add click listener if not current user
+    if (!isCurrentUser) {
+      playerCard.style.cursor = 'pointer';
+      playerCard.addEventListener('click', () => showPlayerDetails(player));
+    }
     
     playersList.appendChild(playerCard);
   });
+}
+
+// Show player details modal
+function showPlayerDetails(player) {
+  document.getElementById('playerModalIcon').textContent = player.icon || '🎅';
+  document.getElementById('playerModalName').textContent = player.name;
+  
+  const wishesContainer = document.getElementById('playerModalWishes');
+  wishesContainer.innerHTML = '';
+  
+  if (player.wishes && player.wishes.length > 0) {
+    player.wishes.forEach(wish => {
+      const wishItem = document.createElement('div');
+      wishItem.className = 'wish-item';
+      wishItem.textContent = wish;
+      wishesContainer.appendChild(wishItem);
+    });
+  } else {
+    const wishItem = document.createElement('div');
+    wishItem.className = 'wish-item';
+    wishItem.textContent = 'No wishes listed';
+    wishesContainer.appendChild(wishItem);
+  }
+  
+  showModal('playerModal');
 }
 
 // Save wishlist
@@ -515,15 +731,24 @@ async function saveWishlist() {
     return;
   }
   
-  // Collect wishes
-  const wishes = [];
-  for (let i = 1; i <= editWishCount; i++) {
-    const wishInput = document.getElementById(`editWish${i}`);
-    if (wishInput) {
-      const wish = wishInput.value.trim();
-      if (wish) wishes.push(wish);
+  // Check for duplicate names (if name changed)
+  if (name !== local.name) {
+    const membersRef = db.ref(`rooms/${local.room}/members`);
+    const membersSnap = await membersRef.get();
+    const members = membersSnap.val() || {};
+    
+    const existingNames = Object.values(members)
+      .filter(member => member.name !== local.name) // Exclude current name
+      .map(member => member.name.toLowerCase());
+    
+    if (existingNames.includes(name.toLowerCase())) {
+      showToast('Name already taken in this lobby');
+      return;
     }
   }
+  
+  // Collect wishes
+  const wishes = collectWishes('edit');
   
   if (wishes.length < 3) {
     showToast('Please enter at least 3 wishes');
@@ -545,11 +770,13 @@ async function saveWishlist() {
 
 // Show edit settings modal
 function showEditSettingsModal() {
-  // Simple implementation - you can expand this
-  const minSpend = prompt('Minimum spend (R):', document.getElementById('settingsMinSpend').textContent);
+  const currentMinSpend = document.getElementById('settingsMinSpend').textContent;
+  const currentMaxPlayers = document.getElementById('settingsMaxPlayers').textContent;
+  
+  const minSpend = prompt('Minimum spend (R):', currentMinSpend);
   if (!minSpend) return;
   
-  const maxPlayers = prompt('Max players:', document.getElementById('settingsMaxPlayers').textContent);
+  const maxPlayers = prompt('Max players:', currentMaxPlayers);
   if (!maxPlayers) return;
   
   const giftDeadline = prompt('Gift deadline (YYYY-MM-DD):', '2023-12-24');
@@ -652,29 +879,31 @@ async function showDrawResult() {
 
 // Leave the lobby
 async function leaveLobby() {
-  if (local.room && local.myUid) {
-    // Remove user from members list
-    await db.ref(`rooms/${local.room}/members/${local.myUid}`).remove();
-    
-    // If owner leaves, delete the room
-    if (local.isOwner) {
-      await db.ref(`rooms/${local.room}`).remove();
+  if (confirm('Are you sure you want to leave the lobby?')) {
+    if (local.room && local.myUid) {
+      // Remove user from members list
+      await db.ref(`rooms/${local.room}/members/${local.myUid}`).remove();
+      
+      // If owner leaves, delete the room
+      if (local.isOwner) {
+        await db.ref(`rooms/${local.room}`).remove();
+      }
     }
+    
+    // Clear local state
+    local = {
+      role: null,
+      room: null,
+      name: null,
+      myUid: null,
+      isOwner: false,
+      wishes: []
+    };
+    
+    clearLocalStorage();
+    showScreen(homeScreen);
+    showToast('Left the lobby');
   }
-  
-  // Clear local state
-  local = {
-    role: null,
-    room: null,
-    name: null,
-    myUid: null,
-    isOwner: false,
-    wishes: []
-  };
-  
-  clearLocalStorage();
-  showScreen(homeScreen);
-  showToast('Left the lobby');
 }
 
 // Utility functions
