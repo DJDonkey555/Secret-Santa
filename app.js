@@ -167,7 +167,7 @@ function closeModal(modalId) {
   document.getElementById(modalId).classList.remove('active');
 }
 
-// Add wish input field
+// Add wish input field with cost
 function addWishInput(type) {
   let container, prefix, countRef;
   
@@ -193,13 +193,26 @@ function addWishInput(type) {
   }
   
   const inputGroup = document.createElement('div');
-  inputGroup.className = 'wish-input-group';
+  inputGroup.className = 'wish-input-with-cost';
   
-  const newInput = document.createElement('input');
-  newInput.type = 'text';
-  newInput.id = `${prefix}${countRef}`;
-  newInput.className = 'form-input';
-  newInput.placeholder = `🎁 Wish ${countRef}`;
+  const textarea = document.createElement('textarea');
+  textarea.id = `${prefix}${countRef}`;
+  textarea.className = 'wish-textarea';
+  textarea.placeholder = `🎁 Wish ${countRef}`;
+  textarea.rows = 1;
+  
+  // Auto-resize textarea
+  textarea.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+  });
+  
+  const costInput = document.createElement('input');
+  costInput.type = 'text';
+  costInput.id = `${prefix}Cost${countRef}`;
+  costInput.className = 'cost-input';
+  costInput.placeholder = 'R';
+  costInput.maxLength = 6;
   
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
@@ -207,7 +220,8 @@ function addWishInput(type) {
   removeBtn.innerHTML = '<i class="fas fa-times"></i>';
   removeBtn.onclick = () => removeWishInput(type, countRef);
   
-  inputGroup.appendChild(newInput);
+  inputGroup.appendChild(textarea);
+  inputGroup.appendChild(costInput);
   inputGroup.appendChild(removeBtn);
   
   // Insert before the add button
@@ -392,22 +406,33 @@ function collectWishes(type) {
   }
   
   for (let i = 1; i <= count; i++) {
-    let wishInput;
+    let wishInput, costInput;
     switch(type) {
       case 'create':
         wishInput = document.getElementById(`createWish${i}`);
+        costInput = document.getElementById(`createWishCost${i}`);
         break;
       case 'join':
         wishInput = document.getElementById(`joinWish${i}`);
+        costInput = document.getElementById(`joinWishCost${i}`);
         break;
       case 'edit':
         wishInput = document.getElementById(`editWish${i}`);
+        costInput = document.getElementById(`editWishCost${i}`);
         break;
     }
     
     if (wishInput) {
       const wish = wishInput.value.trim();
-      if (wish) wishes.push(wish);
+      const cost = costInput ? costInput.value.trim() : '';
+      
+      // Only add if wish is not empty
+      if (wish) {
+        wishes.push({
+          text: wish,
+          cost: cost
+        });
+      }
     }
   }
   
@@ -445,14 +470,34 @@ async function joinRoom(room, asOwner, payload) {
   
   payload.wishes.forEach((wish, index) => {
     const inputGroup = document.createElement('div');
-    inputGroup.className = 'wish-input-group';
+    inputGroup.className = 'wish-input-with-cost';
     
-    const wishInput = document.createElement('input');
-    wishInput.type = 'text';
-    wishInput.id = `editWish${index + 1}`;
-    wishInput.className = 'form-input';
-    wishInput.placeholder = `🎁 Wish ${index + 1}`;
-    wishInput.value = wish;
+    const textarea = document.createElement('textarea');
+    textarea.id = `editWish${index + 1}`;
+    textarea.className = 'wish-textarea';
+    textarea.placeholder = `🎁 Wish ${index + 1}`;
+    textarea.value = wish.text;
+    textarea.rows = 1;
+    
+    // Auto-resize
+    textarea.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+    
+    // Trigger resize for existing content
+    setTimeout(() => {
+      textarea.style.height = 'auto';
+      textarea.style.height = (textarea.scrollHeight) + 'px';
+    }, 0);
+    
+    const costInput = document.createElement('input');
+    costInput.type = 'text';
+    costInput.id = `editWishCost${index + 1}`;
+    costInput.className = 'cost-input';
+    costInput.placeholder = 'R';
+    costInput.value = wish.cost || '';
+    costInput.maxLength = 6;
     
     if (index >= 3) {
       const removeBtn = document.createElement('button');
@@ -463,7 +508,8 @@ async function joinRoom(room, asOwner, payload) {
       inputGroup.appendChild(removeBtn);
     }
     
-    inputGroup.appendChild(wishInput);
+    inputGroup.appendChild(textarea);
+    inputGroup.appendChild(costInput);
     editWishContainer.appendChild(inputGroup);
   });
   
@@ -523,14 +569,34 @@ async function rejoinRoom() {
   
   local.wishes.forEach((wish, index) => {
     const inputGroup = document.createElement('div');
-    inputGroup.className = 'wish-input-group';
+    inputGroup.className = 'wish-input-with-cost';
     
-    const wishInput = document.createElement('input');
-    wishInput.type = 'text';
-    wishInput.id = `editWish${index + 1}`;
-    wishInput.className = 'form-input';
-    wishInput.placeholder = `🎁 Wish ${index + 1}`;
-    wishInput.value = wish;
+    const textarea = document.createElement('textarea');
+    textarea.id = `editWish${index + 1}`;
+    textarea.className = 'wish-textarea';
+    textarea.placeholder = `🎁 Wish ${index + 1}`;
+    textarea.value = wish.text;
+    textarea.rows = 1;
+    
+    // Auto-resize
+    textarea.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+    
+    // Trigger resize for existing content
+    setTimeout(() => {
+      textarea.style.height = 'auto';
+      textarea.style.height = (textarea.scrollHeight) + 'px';
+    }, 0);
+    
+    const costInput = document.createElement('input');
+    costInput.type = 'text';
+    costInput.id = `editWishCost${index + 1}`;
+    costInput.className = 'cost-input';
+    costInput.placeholder = 'R';
+    costInput.value = wish.cost || '';
+    costInput.maxLength = 6;
     
     if (index >= 3) {
       const removeBtn = document.createElement('button');
@@ -541,7 +607,8 @@ async function rejoinRoom() {
       inputGroup.appendChild(removeBtn);
     }
     
-    inputGroup.appendChild(wishInput);
+    inputGroup.appendChild(textarea);
+    inputGroup.appendChild(costInput);
     editWishContainer.appendChild(inputGroup);
   });
   
@@ -664,7 +731,7 @@ function renderPlayerList(players) {
           ${player.wishes && player.wishes.length > 0 ? `
             <div class="player-wish">
               <i class="fas fa-gift"></i>
-              ${player.wishes[0]}
+              ${player.wishes[0].text}
             </div>
           ` : ''}
         </div>
@@ -692,8 +759,17 @@ function showPlayerDetails(player) {
   if (player.wishes && player.wishes.length > 0) {
     player.wishes.forEach(wish => {
       const wishItem = document.createElement('div');
-      wishItem.className = 'wish-item';
-      wishItem.textContent = wish;
+      wishItem.className = wish.cost ? 'wish-item with-cost' : 'wish-item';
+      
+      if (wish.cost) {
+        wishItem.innerHTML = `
+          <span>${wish.text}</span>
+          <span class="wish-cost-badge">R${wish.cost}</span>
+        `;
+      } else {
+        wishItem.textContent = wish.text;
+      }
+      
       wishesContainer.appendChild(wishItem);
     });
   } else {
@@ -847,8 +923,17 @@ async function showDrawResult() {
     if (assignment.wishes && assignment.wishes.length > 0) {
       assignment.wishes.forEach(wish => {
         const wishItem = document.createElement('div');
-        wishItem.className = 'wish-item';
-        wishItem.textContent = wish;
+        wishItem.className = wish.cost ? 'wish-item with-cost' : 'wish-item';
+        
+        if (wish.cost) {
+          wishItem.innerHTML = `
+            <span>${wish.text}</span>
+            <span class="wish-cost-badge">R${wish.cost}</span>
+          `;
+        } else {
+          wishItem.textContent = wish.text;
+        }
+        
         assignedWishes.appendChild(wishItem);
       });
     } else {
