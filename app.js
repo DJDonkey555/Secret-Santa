@@ -20,6 +20,9 @@ const createScreen = document.getElementById('createScreen');
 const joinScreen = document.getElementById('joinScreen');
 const lobbyScreen = document.getElementById('lobbyScreen');
 const resultScreen = document.getElementById('resultScreen');
+const editWishlistScreen = document.getElementById('editWishlistScreen');
+const adminSettingsScreen = document.getElementById('adminSettingsScreen');
+const giftAnimation = document.getElementById('giftAnimation');
 
 const homeButtons = document.getElementById('homeButtons');
 const playerListContainer = document.getElementById('playerListContainer');
@@ -39,13 +42,24 @@ const btnDone = document.getElementById('btnDone');
 const btnAddWish = document.getElementById('btnAddWish');
 const btnAddWishJoin = document.getElementById('btnAddWishJoin');
 
+const btnEditWishlist = document.getElementById('btnEditWishlist');
+const btnSettings = document.getElementById('btnSettings');
+const btnAddEditWish = document.getElementById('btnAddEditWish');
+const btnCancelEdit = document.getElementById('btnCancelEdit');
+const btnSaveWishlist = document.getElementById('btnSaveWishlist');
+const btnCancelSettings = document.getElementById('btnCancelSettings');
+const btnSaveSettings = document.getElementById('btnSaveSettings');
+const btnViewWishlist = document.getElementById('btnViewWishlist');
+
 const playerList = document.getElementById('playerList');
 const playerDetails = document.getElementById('playerDetails');
 const selectedPlayerName = document.getElementById('selectedPlayerName');
 const selectedPlayerWishes = document.getElementById('selectedPlayerWishes');
+const editWishInputs = document.getElementById('editWishInputs');
 
 const assignedPerson = document.getElementById('assignedPerson');
 const assignedWishes = document.getElementById('assignedWishes');
+const giftedPerson = document.getElementById('giftedPerson');
 
 const toast = document.getElementById('toast');
 
@@ -55,12 +69,14 @@ let local = {
   room: null,
   name: null,
   myUid: null,
-  isOwner: false
+  isOwner: false,
+  wishes: []
 };
 
 // Wish counter for dynamic wish inputs
 let wishCount = 3;
 let wishCountJoin = 3;
+let editWishCount = 3;
 
 // Initialize the app
 function init() {
@@ -106,6 +122,20 @@ function setupEventListeners() {
   
   // Start draw
   btnStartDraw.addEventListener('click', startDraw);
+  
+  // Edit wishlist
+  btnEditWishlist.addEventListener('click', showEditWishlist);
+  btnAddEditWish.addEventListener('click', addEditWishInput);
+  btnCancelEdit.addEventListener('click', () => showScreen(lobbyScreen));
+  btnSaveWishlist.addEventListener('click', saveWishlist);
+  
+  // Settings
+  btnSettings.addEventListener('click', showAdminSettings);
+  btnCancelSettings.addEventListener('click', () => showScreen(lobbyScreen));
+  btnSaveSettings.addEventListener('click', saveAdminSettings);
+  
+  // View wishlist from result screen
+  btnViewWishlist.addEventListener('click', showEditWishlist);
 }
 
 // Check localStorage for existing session
@@ -147,7 +177,7 @@ function clearLocalStorage() {
 
 // Show a specific screen
 function showScreen(screen) {
-  [homeScreen, createScreen, joinScreen, lobbyScreen, resultScreen].forEach(s => {
+  [homeScreen, createScreen, joinScreen, lobbyScreen, resultScreen, editWishlistScreen, adminSettingsScreen].forEach(s => {
     s.classList.add('hidden');
   });
   screen.classList.remove('hidden');
@@ -161,6 +191,51 @@ function showCreateScreen() {
 // Show join screen
 function showJoinScreen() {
   showScreen(joinScreen);
+}
+
+// Show edit wishlist screen
+function showEditWishlist() {
+  // Populate with current wishes
+  editWishInputs.innerHTML = '';
+  editWishCount = 0;
+  
+  local.wishes.forEach((wish, index) => {
+    editWishCount++;
+    const wishItem = document.createElement('div');
+    wishItem.className = 'wish-item';
+    wishItem.innerHTML = `
+      <input type="text" id="editWish${editWishCount}" class="form-control" placeholder="Wish ${editWishCount}" value="${wish}">
+      ${editWishCount > 3 ? `<button type="button" class="btn btn-secondary remove-wish" data-wish="${editWishCount}">
+        <i class="fas fa-times"></i>
+      </button>` : ''}
+    `;
+    editWishInputs.appendChild(wishItem);
+    
+    // Add event listener to remove button if it exists
+    if (editWishCount > 3) {
+      wishItem.querySelector('.remove-wish').addEventListener('click', function() {
+        if (editWishCount > 3) {
+          this.parentElement.remove();
+          editWishCount--;
+        }
+      });
+    }
+  });
+  
+  showScreen(editWishlistScreen);
+}
+
+// Show admin settings screen
+function showAdminSettings() {
+  if (!local.isOwner) return;
+  
+  // Populate with current settings
+  document.getElementById('editMinSpend').value = document.getElementById('minSpendDisplay').textContent;
+  document.getElementById('editMaxPlayers').value = document.getElementById('maxPlayersDisplay').textContent;
+  document.getElementById('editGiftDeadline').value = document.getElementById('deadlineDisplay').dataset.value || '';
+  document.getElementById('editTheme').value = document.getElementById('themeDisplay').textContent.toLowerCase();
+  
+  showScreen(adminSettingsScreen);
 }
 
 // Add wish input field
@@ -209,14 +284,38 @@ function addWishInputJoin() {
   });
 }
 
+// Add wish input field for edit screen
+function addEditWishInput() {
+  editWishCount++;
+  const newWish = document.createElement('div');
+  newWish.className = 'wish-item';
+  newWish.innerHTML = `
+    <input type="text" id="editWish${editWishCount}" class="form-control" placeholder="Wish ${editWishCount}">
+    <button type="button" class="btn btn-secondary remove-wish" data-wish="${editWishCount}">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
+  editWishInputs.appendChild(newWish);
+  
+  // Add event listener to remove button
+  newWish.querySelector('.remove-wish').addEventListener('click', function() {
+    if (editWishCount > 3) {
+      this.parentElement.remove();
+      editWishCount--;
+    }
+  });
+}
+
 // Reset create form
 function resetCreateForm() {
   document.getElementById('createName').value = '';
   document.getElementById('createWish1').value = '';
   document.getElementById('createWish2').value = '';
   document.getElementById('createWish3').value = '';
-  document.getElementById('minSpend').value = '20';
+  document.getElementById('minSpend').value = '50';
   document.getElementById('maxPlayers').value = '10';
+  document.getElementById('giftDeadline').value = '';
+  document.getElementById('theme').value = 'christmas';
   
   // Remove additional wish inputs
   const wishInputs = document.querySelector('#createScreen .wish-inputs');
@@ -247,6 +346,8 @@ async function createLobby() {
   const name = document.getElementById('createName').value.trim();
   const minSpend = document.getElementById('minSpend').value;
   const maxPlayers = document.getElementById('maxPlayers').value;
+  const giftDeadline = document.getElementById('giftDeadline').value;
+  const theme = document.getElementById('theme').value;
   
   // Collect wishes
   const wishes = [];
@@ -281,6 +382,8 @@ async function createLobby() {
     owner: name,
     minSpend: parseInt(minSpend),
     maxPlayers: parseInt(maxPlayers),
+    giftDeadline: giftDeadline,
+    theme: theme,
     createdAt: Date.now(),
     drawStarted: false
   });
@@ -291,6 +394,7 @@ async function createLobby() {
   local.name = name;
   local.myUid = 'owner_' + Date.now();
   local.isOwner = true;
+  local.wishes = wishes;
   
   // Join as owner
   await joinRoom(code, true, { name, wishes });
@@ -356,6 +460,7 @@ async function joinLobby() {
   local.name = name;
   local.myUid = 'member_' + Date.now();
   local.isOwner = false;
+  local.wishes = wishes;
   
   // Join room
   await joinRoom(code, false, { name, wishes });
@@ -383,8 +488,10 @@ async function joinRoom(room, asOwner = false, payload) {
   
   if (asOwner) {
     btnStartDraw.classList.remove('hidden');
+    btnSettings.classList.remove('hidden');
   } else {
     btnStartDraw.classList.add('hidden');
+    btnSettings.classList.add('hidden');
   }
   
   // Start listening to room updates
@@ -399,8 +506,17 @@ async function joinRoom(room, asOwner = false, payload) {
   const roomSnap = await roomRef.get();
   if (roomSnap.exists()) {
     const roomData = roomSnap.val();
-    document.getElementById('minSpendDisplay').textContent = roomData.minSpend || 20;
+    document.getElementById('minSpendDisplay').textContent = roomData.minSpend || 50;
     document.getElementById('maxPlayersDisplay').textContent = roomData.maxPlayers || 10;
+    
+    if (roomData.giftDeadline) {
+      document.getElementById('deadlineDisplay').textContent = new Date(roomData.giftDeadline).toLocaleDateString();
+      document.getElementById('deadlineDisplay').dataset.value = roomData.giftDeadline;
+    } else {
+      document.getElementById('deadlineDisplay').textContent = 'Not set';
+    }
+    
+    document.getElementById('themeDisplay').textContent = roomData.theme ? roomData.theme.charAt(0).toUpperCase() + roomData.theme.slice(1) : 'Christmas';
   }
 }
 
@@ -429,6 +545,10 @@ async function rejoinRoom() {
     return;
   }
   
+  // Get user's wishes
+  const memberData = memberSnap.val();
+  local.wishes = memberData.wishes || [];
+  
   // Update UI
   homeButtons.classList.add('hidden');
   playerListContainer.classList.remove('hidden');
@@ -436,6 +556,7 @@ async function rejoinRoom() {
   
   if (local.isOwner) {
     btnStartDraw.classList.remove('hidden');
+    btnSettings.classList.remove('hidden');
     
     // Check if draw has already started
     if (roomData.drawStarted) {
@@ -444,6 +565,7 @@ async function rejoinRoom() {
     }
   } else {
     btnStartDraw.classList.add('hidden');
+    btnSettings.classList.add('hidden');
     
     // Check if draw has happened and show result
     if (roomData.drawStarted) {
@@ -461,14 +583,24 @@ async function rejoinRoom() {
   } else {
     showScreen(lobbyScreen);
     document.getElementById('lobbyCodeDisplay').textContent = local.room;
-    document.getElementById('minSpendDisplay').textContent = roomData.minSpend || 20;
+    document.getElementById('minSpendDisplay').textContent = roomData.minSpend || 50;
     document.getElementById('maxPlayersDisplay').textContent = roomData.maxPlayers || 10;
+    
+    if (roomData.giftDeadline) {
+      document.getElementById('deadlineDisplay').textContent = new Date(roomData.giftDeadline).toLocaleDateString();
+      document.getElementById('deadlineDisplay').dataset.value = roomData.giftDeadline;
+    } else {
+      document.getElementById('deadlineDisplay').textContent = 'Not set';
+    }
+    
+    document.getElementById('themeDisplay').textContent = roomData.theme ? roomData.theme.charAt(0).toUpperCase() + roomData.theme.slice(1) : 'Christmas';
   }
 }
 
 // Listen for room updates
 function listenRoom(room) {
   const membersRef = db.ref(`rooms/${room}/members`);
+  const roomRef = db.ref('rooms/' + room);
   
   membersRef.on('value', snap => {
     const members = snap.val() || {};
@@ -476,15 +608,47 @@ function listenRoom(room) {
     
     renderPlayerList(membersArr);
     
+    // Check if current user is still in the room
+    if (!members[local.myUid]) {
+      // User was kicked or removed
+      showToast('You have been removed from the lobby');
+      clearLocalStorage();
+      showScreen(homeScreen);
+      return;
+    }
+    
+    // Update local wishes if they changed
+    if (members[local.myUid].wishes) {
+      local.wishes = members[local.myUid].wishes;
+    }
+  });
+  
+  roomRef.on('value', snap => {
+    const roomData = snap.val();
+    if (!roomData) return;
+    
+    // Update settings display
+    document.getElementById('minSpendDisplay').textContent = roomData.minSpend || 50;
+    document.getElementById('maxPlayersDisplay').textContent = roomData.maxPlayers || 10;
+    
+    if (roomData.giftDeadline) {
+      document.getElementById('deadlineDisplay').textContent = new Date(roomData.giftDeadline).toLocaleDateString();
+      document.getElementById('deadlineDisplay').dataset.value = roomData.giftDeadline;
+    } else {
+      document.getElementById('deadlineDisplay').textContent = 'Not set';
+    }
+    
+    document.getElementById('themeDisplay').textContent = roomData.theme ? roomData.theme.charAt(0).toUpperCase() + roomData.theme.slice(1) : 'Christmas';
+    
     // Check if draw has started
-    const roomRef = db.ref('rooms/' + room);
-    roomRef.child('drawStarted').on('value', drawSnap => {
-      const started = drawSnap.exists() && drawSnap.val() === true;
+    if (roomData.drawStarted) {
+      showDrawResult();
       
-      if (started) {
-        showDrawResult();
+      if (local.isOwner) {
+        btnStartDraw.disabled = true;
+        btnStartDraw.textContent = 'Draw Completed';
       }
-    });
+    }
   });
 }
 
@@ -503,7 +667,7 @@ function renderPlayerList(players) {
     });
     
     // Add kick button for owner (except themselves)
-    if (local.isOwner && player.uid !== local.myUid) {
+    if (local.isOwner && player.uid !== local.myUid && !local.roomData?.drawStarted) {
       const kickBtn = document.createElement('button');
       kickBtn.className = 'kick-button';
       kickBtn.innerHTML = '<i class="fas fa-user-times"></i>';
@@ -524,11 +688,17 @@ function showPlayerDetails(player) {
   selectedPlayerName.textContent = player.name;
   selectedPlayerWishes.innerHTML = '';
   
-  player.wishes.forEach(wish => {
+  if (player.wishes && player.wishes.length > 0) {
+    player.wishes.forEach(wish => {
+      const li = document.createElement('li');
+      li.textContent = wish;
+      selectedPlayerWishes.appendChild(li);
+    });
+  } else {
     const li = document.createElement('li');
-    li.textContent = wish;
+    li.textContent = 'No wishes listed';
     selectedPlayerWishes.appendChild(li);
-  });
+  }
   
   playerDetails.classList.remove('hidden');
 }
@@ -540,7 +710,61 @@ async function kickPlayer(uid) {
   if (confirm('Are you sure you want to kick this player?')) {
     await db.ref(`rooms/${local.room}/members/${uid}`).remove();
     showToast('Player kicked');
+    
+    // Clear player details if the kicked player was being viewed
+    const memberSnap = await db.ref(`rooms/${local.room}/members/${uid}`).get();
+    if (!memberSnap.exists()) {
+      playerDetails.classList.add('hidden');
+    }
   }
+}
+
+// Save wishlist
+async function saveWishlist() {
+  // Collect wishes
+  const wishes = [];
+  for (let i = 1; i <= editWishCount; i++) {
+    const wishInput = document.getElementById(`editWish${i}`);
+    if (wishInput) {
+      const wish = wishInput.value.trim();
+      if (wish) wishes.push(wish);
+    }
+  }
+  
+  if (wishes.length < 3) {
+    showToast('Please enter at least 3 wishes');
+    return;
+  }
+  
+  // Update in Firebase
+  await db.ref(`rooms/${local.room}/members/${local.myUid}/wishes`).set(wishes);
+  
+  // Update local state
+  local.wishes = wishes;
+  
+  showToast('Wishlist updated successfully!');
+  showScreen(lobbyScreen);
+}
+
+// Save admin settings
+async function saveAdminSettings() {
+  if (!local.isOwner) return;
+  
+  const minSpend = document.getElementById('editMinSpend').value;
+  const maxPlayers = document.getElementById('editMaxPlayers').value;
+  const giftDeadline = document.getElementById('editGiftDeadline').value;
+  const theme = document.getElementById('editTheme').value;
+  
+  const updates = {};
+  updates[`rooms/${local.room}/minSpend`] = parseInt(minSpend);
+  updates[`rooms/${local.room}/maxPlayers`] = parseInt(maxPlayers);
+  updates[`rooms/${local.room}/giftDeadline`] = giftDeadline;
+  updates[`rooms/${local.room}/theme`] = theme;
+  
+  await db.ref().update(updates);
+  
+  showToast('Settings updated successfully!');
+  showScreen(lobbyScreen);
 }
 
 // Start the draw
@@ -592,7 +816,20 @@ async function startDraw() {
   updates[`rooms/${room}/drawStarted`] = true;
   
   await db.ref().update(updates);
-  showToast('Draw completed!');
+  
+  // Show gift animation for the owner
+  showGiftAnimation(entries.find(e => e.uid === assigned[uids.indexOf(local.myUid)]).name);
+}
+
+// Show gift animation
+function showGiftAnimation(personName) {
+  giftedPerson.textContent = personName;
+  giftAnimation.classList.remove('hidden');
+  
+  setTimeout(() => {
+    giftAnimation.classList.add('hidden');
+    showDrawResult();
+  }, 3000);
 }
 
 // Show draw result
@@ -606,11 +843,17 @@ async function showDrawResult() {
     assignedPerson.textContent = assignment.name;
     assignedWishes.innerHTML = '';
     
-    assignment.wishes.forEach(wish => {
+    if (assignment.wishes && assignment.wishes.length > 0) {
+      assignment.wishes.forEach(wish => {
+        const li = document.createElement('li');
+        li.textContent = wish;
+        assignedWishes.appendChild(li);
+      });
+    } else {
       const li = document.createElement('li');
-      li.textContent = wish;
+      li.textContent = 'No wishes listed';
       assignedWishes.appendChild(li);
-    });
+    }
     
     showScreen(resultScreen);
     
@@ -621,11 +864,25 @@ async function showDrawResult() {
         item.classList.add('assigned');
       }
     });
+    
+    // Disable leave button after draw
+    btnLeave.disabled = true;
+    btnLeave.textContent = 'Cannot leave after draw';
   }
 }
 
 // Leave the lobby
 async function leaveLobby() {
+  // Check if draw has started
+  const roomRef = db.ref('rooms/' + local.room);
+  const roomSnap = await roomRef.get();
+  const roomData = roomSnap.val();
+  
+  if (roomData.drawStarted && !local.isOwner) {
+    showToast('Cannot leave after the draw has started');
+    return;
+  }
+  
   if (local.room && local.myUid) {
     // Remove user from members list
     await db.ref(`rooms/${local.room}/members/${local.myUid}`).remove();
@@ -642,7 +899,8 @@ async function leaveLobby() {
     room: null,
     name: null,
     myUid: null,
-    isOwner: false
+    isOwner: false,
+    wishes: []
   };
   
   clearLocalStorage();
@@ -652,6 +910,8 @@ async function leaveLobby() {
   playerListContainer.classList.add('hidden');
   lobbyControls.classList.add('hidden');
   playerDetails.classList.add('hidden');
+  btnLeave.disabled = false;
+  btnLeave.textContent = 'Leave Lobby';
   
   showScreen(homeScreen);
   showToast('Left the lobby');
