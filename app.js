@@ -22,7 +22,6 @@ const lobbyScreen = document.getElementById('lobbyScreen');
 const resultScreen = document.getElementById('resultScreen');
 const editWishlistScreen = document.getElementById('editWishlistScreen');
 const adminSettingsScreen = document.getElementById('adminSettingsScreen');
-const giftAnimation = document.getElementById('giftAnimation');
 
 const homeButtons = document.getElementById('homeButtons');
 const playerListContainer = document.getElementById('playerListContainer');
@@ -30,6 +29,8 @@ const lobbyControls = document.getElementById('lobbyControls');
 
 const btnCreate = document.getElementById('btnCreate');
 const btnJoin = document.getElementById('btnJoin');
+const btnCreateMain = document.getElementById('btnCreateMain');
+const btnJoinMain = document.getElementById('btnJoinMain');
 const btnStartDraw = document.getElementById('btnStartDraw');
 const btnLeave = document.getElementById('btnLeave');
 
@@ -59,7 +60,6 @@ const editWishInputs = document.getElementById('editWishInputs');
 
 const assignedPerson = document.getElementById('assignedPerson');
 const assignedWishes = document.getElementById('assignedWishes');
-const giftedPerson = document.getElementById('giftedPerson');
 
 const toast = document.getElementById('toast');
 
@@ -80,26 +80,8 @@ let editWishCount = 3;
 
 // Initialize the app
 function init() {
-  createSnowflakes();
   setupEventListeners();
   checkLocalStorage();
-}
-
-// Create snowflake animation
-function createSnowflakes() {
-  const snowflakesContainer = document.getElementById('snowflakes');
-  const snowflakeCount = 50;
-  
-  for (let i = 0; i < snowflakeCount; i++) {
-    const snowflake = document.createElement('div');
-    snowflake.className = 'snowflake';
-    snowflake.innerHTML = '❄';
-    snowflake.style.left = Math.random() * 100 + 'vw';
-    snowflake.style.animationDuration = Math.random() * 3 + 2 + 's';
-    snowflake.style.opacity = Math.random();
-    snowflake.style.fontSize = (Math.random() * 10 + 10) + 'px';
-    snowflakesContainer.appendChild(snowflake);
-  }
 }
 
 // Set up event listeners
@@ -107,6 +89,8 @@ function setupEventListeners() {
   // Navigation buttons
   btnCreate.addEventListener('click', showCreateScreen);
   btnJoin.addEventListener('click', showJoinScreen);
+  btnCreateMain.addEventListener('click', showCreateScreen);
+  btnJoinMain.addEventListener('click', showJoinScreen);
   btnLeave.addEventListener('click', leaveLobby);
   btnDone.addEventListener('click', () => showScreen(lobbyScreen));
   
@@ -233,7 +217,6 @@ function showAdminSettings() {
   document.getElementById('editMinSpend').value = document.getElementById('minSpendDisplay').textContent;
   document.getElementById('editMaxPlayers').value = document.getElementById('maxPlayersDisplay').textContent;
   document.getElementById('editGiftDeadline').value = document.getElementById('deadlineDisplay').dataset.value || '';
-  document.getElementById('editTheme').value = document.getElementById('themeDisplay').textContent.toLowerCase();
   
   showScreen(adminSettingsScreen);
 }
@@ -315,7 +298,6 @@ function resetCreateForm() {
   document.getElementById('minSpend').value = '50';
   document.getElementById('maxPlayers').value = '10';
   document.getElementById('giftDeadline').value = '';
-  document.getElementById('theme').value = 'christmas';
   
   // Remove additional wish inputs
   const wishInputs = document.querySelector('#createScreen .wish-inputs');
@@ -347,7 +329,6 @@ async function createLobby() {
   const minSpend = document.getElementById('minSpend').value;
   const maxPlayers = document.getElementById('maxPlayers').value;
   const giftDeadline = document.getElementById('giftDeadline').value;
-  const theme = document.getElementById('theme').value;
   
   // Collect wishes
   const wishes = [];
@@ -383,7 +364,6 @@ async function createLobby() {
     minSpend: parseInt(minSpend),
     maxPlayers: parseInt(maxPlayers),
     giftDeadline: giftDeadline,
-    theme: theme,
     createdAt: Date.now(),
     drawStarted: false
   });
@@ -515,8 +495,6 @@ async function joinRoom(room, asOwner = false, payload) {
     } else {
       document.getElementById('deadlineDisplay').textContent = 'Not set';
     }
-    
-    document.getElementById('themeDisplay').textContent = roomData.theme ? roomData.theme.charAt(0).toUpperCase() + roomData.theme.slice(1) : 'Christmas';
   }
 }
 
@@ -592,8 +570,6 @@ async function rejoinRoom() {
     } else {
       document.getElementById('deadlineDisplay').textContent = 'Not set';
     }
-    
-    document.getElementById('themeDisplay').textContent = roomData.theme ? roomData.theme.charAt(0).toUpperCase() + roomData.theme.slice(1) : 'Christmas';
   }
 }
 
@@ -634,11 +610,7 @@ function listenRoom(room) {
     if (roomData.giftDeadline) {
       document.getElementById('deadlineDisplay').textContent = new Date(roomData.giftDeadline).toLocaleDateString();
       document.getElementById('deadlineDisplay').dataset.value = roomData.giftDeadline;
-    } else {
-      document.getElementById('deadlineDisplay').textContent = 'Not set';
     }
-    
-    document.getElementById('themeDisplay').textContent = roomData.theme ? roomData.theme.charAt(0).toUpperCase() + roomData.theme.slice(1) : 'Christmas';
     
     // Check if draw has started
     if (roomData.drawStarted) {
@@ -667,7 +639,7 @@ function renderPlayerList(players) {
     });
     
     // Add kick button for owner (except themselves)
-    if (local.isOwner && player.uid !== local.myUid && !local.roomData?.drawStarted) {
+    if (local.isOwner && player.uid !== local.myUid) {
       const kickBtn = document.createElement('button');
       kickBtn.className = 'kick-button';
       kickBtn.innerHTML = '<i class="fas fa-user-times"></i>';
@@ -753,13 +725,11 @@ async function saveAdminSettings() {
   const minSpend = document.getElementById('editMinSpend').value;
   const maxPlayers = document.getElementById('editMaxPlayers').value;
   const giftDeadline = document.getElementById('editGiftDeadline').value;
-  const theme = document.getElementById('editTheme').value;
   
   const updates = {};
   updates[`rooms/${local.room}/minSpend`] = parseInt(minSpend);
   updates[`rooms/${local.room}/maxPlayers`] = parseInt(maxPlayers);
   updates[`rooms/${local.room}/giftDeadline`] = giftDeadline;
-  updates[`rooms/${local.room}/theme`] = theme;
   
   await db.ref().update(updates);
   
@@ -816,20 +786,7 @@ async function startDraw() {
   updates[`rooms/${room}/drawStarted`] = true;
   
   await db.ref().update(updates);
-  
-  // Show gift animation for the owner
-  showGiftAnimation(entries.find(e => e.uid === assigned[uids.indexOf(local.myUid)]).name);
-}
-
-// Show gift animation
-function showGiftAnimation(personName) {
-  giftedPerson.textContent = personName;
-  giftAnimation.classList.remove('hidden');
-  
-  setTimeout(() => {
-    giftAnimation.classList.add('hidden');
-    showDrawResult();
-  }, 3000);
+  showToast('Draw completed!');
 }
 
 // Show draw result
