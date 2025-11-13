@@ -1,3 +1,4 @@
+/* style.css */
 :root {
   /* Festive Christmas Color Palette */
   --primary: #C41E3A;        /* Christmas Red */
@@ -865,6 +866,92 @@ body::before {
 
 .toast.show {
   transform: translateX(-50%) translateY(0);
+}
+
+/* My Groups Styles */
+.group-card {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.group-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(198, 30, 58, 0.2);
+}
+
+.group-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.group-icon {
+  font-size: 2rem;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.group-details {
+  flex: 1;
+}
+
+.group-name {
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 4px;
+  font-size: 1.1rem;
+}
+
+.group-role {
+  font-size: 0.9rem;
+  color: var(--primary);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.group-assignment, .group-status {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-assignment {
+  color: var(--success);
+}
+
+.group-arrow {
+  color: var(--text-light);
+  font-size: 1rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  color: var(--border);
+  margin-bottom: 20px;
+}
+
+.empty-state h4 {
+  color: var(--text-light);
+  margin-bottom: 10px;
+}
+
+.empty-state p {
+  color: var(--text-light);
+  margin-bottom: 25px;
 }
 
 /* Utility Classes */
