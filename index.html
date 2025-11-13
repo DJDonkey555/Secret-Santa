@@ -28,6 +28,10 @@
           <i class="fas fa-sign-in-alt"></i>
           <span>Join Lobby</span>
         </button>
+        <button id="btnMyGroups" class="main-btn secondary">
+          <i class="fas fa-users"></i>
+          <span>My Groups</span>
+        </button>
       </div>
 
       <div class="app-footer">
@@ -146,10 +150,43 @@
     </div>
   </div>
 
+  <!-- My Groups Screen -->
+  <div id="myGroupsScreen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" onclick="showScreen(homeScreen)">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <h2>My Groups</h2>
+      <div class="header-spacer"></div>
+    </div>
+
+    <div class="screen-content">
+      <div class="section-header">
+        <h3>Active Groups</h3>
+      </div>
+      
+      <div class="groups-list" id="groupsList">
+        <!-- Groups will be dynamically added here -->
+      </div>
+
+      <div class="empty-state" id="emptyGroupsState" style="display: none;">
+        <div class="empty-icon">
+          <i class="fas fa-users"></i>
+        </div>
+        <h4>No Groups Yet</h4>
+        <p>Join or create a Secret Santa group to get started!</p>
+        <button class="action-btn primary" onclick="showScreen(homeScreen)">
+          <i class="fas fa-plus"></i>
+          Find Groups
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Lobby Screen -->
   <div id="lobbyScreen" class="screen">
     <div class="screen-header">
-      <button class="back-btn" onclick="leaveLobby()">
+      <button class="back-btn" onclick="showScreen(myGroupsScreen)">
         <i class="fas fa-arrow-left"></i>
       </button>
       <h2 id="lobbyTitle">Lobby</h2>
@@ -338,6 +375,10 @@
         <button class="menu-item" onclick="switchTab('settings'); closeModal('menuModal')">
           <i class="fas fa-cog"></i>
           Lobby Settings
+        </button>
+        <button class="menu-item" onclick="showScreen(myGroupsScreen); closeModal('menuModal')">
+          <i class="fas fa-users"></i>
+          My Groups
         </button>
         <button class="menu-item danger" onclick="leaveLobby(); closeModal('menuModal')">
           <i class="fas fa-sign-out-alt"></i>
