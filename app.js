@@ -790,7 +790,7 @@ async function saveAdminSettings(minSpend, maxPlayers, giftDeadline) {
   showToast('Settings updated! ⚙️');
 }
 
-// Start the draw
+// IMPROVED: Start the draw with truly random assignment
 async function startDraw() {
   if (!local.isOwner) return;
   
@@ -809,16 +809,32 @@ async function startDraw() {
     wishes: info.wishes || [] 
   }));
   
-  if (entries.length < 3) {
-    showToast('Need at least 3 players');
+  if (entries.length < 2) {
+    showToast('Need at least 2 players');
     return;
   }
   
   const uids = entries.map(e => e.uid);
-  const assigned = derangement(uids);
+  
+  // Use the improved secure derangement algorithm
+  const assigned = secureDerangement(uids);
   
   if (!assigned) {
-    showToast('Try again');
+    showToast('Could not create valid assignments. Please try again.');
+    return;
+  }
+  
+  // Verify the assignment is valid
+  let isValidAssignment = true;
+  for (let i = 0; i < uids.length; i++) {
+    if (uids[i] === assigned[i]) {
+      isValidAssignment = false;
+      break;
+    }
+  }
+  
+  if (!isValidAssignment) {
+    showToast('Invalid assignment detected. Please try again.');
     return;
   }
   
@@ -828,7 +844,6 @@ async function startDraw() {
     const to = assigned[i];
     const target = entries.find(e => e.uid === to);
     
-    // FIXED: Store assignment correctly - each user gets assignedToUid pointing to who THEY gift
     updates[`rooms/${room}/members/${from}/assignedToUid`] = to;
     updates[`rooms/${room}/assignments/${from}`] = {
       toUid: to,
@@ -840,7 +855,7 @@ async function startDraw() {
   updates[`rooms/${room}/drawStarted`] = true;
   
   await db.ref().update(updates);
-  showToast('Draw completed! ✨');
+  showToast('Draw completed! ✨ Everyone has been randomly assigned!');
 }
 
 // Show draw result
@@ -900,31 +915,89 @@ async function leaveLobby() {
   }
 }
 
-// Utility functions
+// IMPROVED: Utility functions with true randomness
 function makeCode(len = 5) {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let s = "";
+  const crypto = window.crypto || window.msCrypto;
+  
   for (let i = 0; i < len; i++) {
-    s += chars[Math.floor(Math.random() * chars.length)];
+    const randomBuffer = new Uint32Array(1);
+    crypto.getRandomValues(randomBuffer);
+    const randomIndex = randomBuffer[0] % chars.length;
+    s += chars[randomIndex];
   }
   return s;
 }
 
-function derangement(uids) {
-  function shuffle(a) {
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
+// IMPROVED: Truly random derangement algorithm
+function secureDerangement(uids) {
+  if (uids.length < 2) return null;
+  
+  // Use crypto.getRandomValues for cryptographically secure randomness
+  const crypto = window.crypto || window.msCrypto;
+  
+  // Fisher-Yates shuffle with crypto randomness
+  function cryptoShuffle(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      // Get cryptographically secure random index
+      const randomBuffer = new Uint32Array(1);
+      crypto.getRandomValues(randomBuffer);
+      const j = randomBuffer[0] % (i + 1);
+      
+      // Swap elements
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    return a;
+    return shuffled;
   }
   
-  for (let t = 0; t < 200; t++) {
-    const copy = uids.slice();
-    shuffle(copy);
-    if (uids.every((u, i) => u !== copy[i])) return copy;
+  // Algorithm: Keep shuffling until we get a valid derangement
+  // With crypto randomness, this should be very efficient
+  let attempts = 0;
+  const maxAttempts = 1000; // Increased safety margin
+  
+  while (attempts < maxAttempts) {
+    const shuffled = cryptoShuffle(uids);
+    let isValid = true;
+    
+    // Check if it's a valid derangement (no one gets themselves)
+    for (let i = 0; i < uids.length; i++) {
+      if (uids[i] === shuffled[i]) {
+        isValid = false;
+        break;
+      }
+    }
+    
+    if (isValid) {
+      return shuffled;
+    }
+    attempts++;
   }
-  return null;
+  
+  // Fallback: Use Sattolo's algorithm (guaranteed derangement)
+  console.log("Using fallback derangement algorithm");
+  return sattoloCycle(uids);
+}
+
+// Sattolo's algorithm - guaranteed to produce a derangement
+function sattoloCycle(array) {
+  const arr = [...array];
+  const crypto = window.crypto || window.msCrypto;
+  
+  for (let i = arr.length - 1; i > 0; i--) {
+    const randomBuffer = new Uint32Array(1);
+    crypto.getRandomValues(randomBuffer);
+    const j = randomBuffer[0] % i; // j is in [0, i-1]
+    
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// Keep the old derangement function for compatibility but use the new secure version
+function derangement(uids) {
+  return secureDerangement(uids);
 }
 
 function showToast(message) {
