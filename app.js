@@ -1,3 +1,4 @@
+// app.js
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBOlYzXVvUib58tv_hNMHlGSM2TmdLTZdE",
@@ -18,7 +19,6 @@ const db = firebase.database();
 const homeScreen = document.getElementById('homeScreen');
 const createScreen = document.getElementById('createScreen');
 const joinScreen = document.getElementById('joinScreen');
-const myGroupsScreen = document.getElementById('myGroupsScreen');
 const lobbyScreen = document.getElementById('lobbyScreen');
 const resultScreen = document.getElementById('resultScreen');
 const menuModal = document.getElementById('menuModal');
@@ -26,7 +26,6 @@ const playerModal = document.getElementById('playerModal');
 
 const btnCreate = document.getElementById('btnCreate');
 const btnJoin = document.getElementById('btnJoin');
-const btnMyGroups = document.getElementById('btnMyGroups');
 const btnConfirmCreate = document.getElementById('btnConfirmCreate');
 const btnConfirmJoin = document.getElementById('btnConfirmJoin');
 const btnAddWish = document.getElementById('btnAddWish');
@@ -40,8 +39,6 @@ const btnUpdateWishlist = document.getElementById('btnUpdateWishlist');
 const btnMenu = document.getElementById('btnMenu');
 
 const playersList = document.getElementById('playersList');
-const groupsList = document.getElementById('groupsList');
-const emptyGroupsState = document.getElementById('emptyGroupsState');
 const assignedPerson = document.getElementById('assignedPerson');
 const assignedWishes = document.getElementById('assignedWishes');
 const adminControls = document.getElementById('adminControls');
@@ -52,13 +49,15 @@ const tabContents = document.querySelectorAll('.tab-content');
 
 const toast = document.getElementById('toast');
 
-// Local state - UPDATED FOR MULTIPLE GROUPS
+// Local state
 let local = {
-  userId: null,
-  currentGroup: null,
+  role: null,
+  room: null,
   name: null,
-  groups: {}, // Format: { roomCode: { name, role, assignedTo, assignedName, assignedWishes } }
-  currentGroupData: null // Data for currently viewed group
+  myUid: null,
+  isOwner: false,
+  wishes: [],
+  assignedToUid: null // NEW: Track who we're assigned to gift
 };
 
 // Wish counters and tracking
@@ -81,7 +80,6 @@ function setupEventListeners() {
   // Navigation
   btnCreate.addEventListener('click', () => showScreen(createScreen));
   btnJoin.addEventListener('click', () => showScreen(joinScreen));
-  btnMyGroups.addEventListener('click', showMyGroups);
   btnConfirmCreate.addEventListener('click', createLobby);
   btnConfirmJoin.addEventListener('click', joinLobby);
   btnBackToLobby.addEventListener('click', () => showScreen(lobbyScreen));
@@ -109,47 +107,39 @@ function setupEventListeners() {
   });
 }
 
-// Generate unique user ID
-function generateUserId() {
-  return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-
-// Check localStorage for existing session - UPDATED
+// Check localStorage for existing session
 function checkLocalStorage() {
-  local.userId = localStorage.getItem('santa_userId');
-  const savedGroups = localStorage.getItem('santa_groups');
+  const savedRoom = localStorage.getItem('santa_room');
+  const savedUid = localStorage.getItem('santa_uid');
   const savedName = localStorage.getItem('santa_name');
+  const savedRole = localStorage.getItem('santa_role');
   
-  if (!local.userId) {
-    local.userId = generateUserId();
-    localStorage.setItem('santa_userId', local.userId);
-  }
-  
-  if (savedGroups) {
-    local.groups = JSON.parse(savedGroups);
-  }
-  
-  if (savedName) {
+  if (savedRoom && savedUid) {
+    local.room = savedRoom;
+    local.myUid = savedUid;
     local.name = savedName;
+    local.role = savedRole;
+    local.isOwner = savedRole === 'owner';
+    rejoinRoom();
+  } else {
+    showScreen(homeScreen);
   }
-  
-  showScreen(homeScreen);
 }
 
-// Save to localStorage - UPDATED
+// Save to localStorage
 function saveToLocalStorage() {
-  localStorage.setItem('santa_userId', local.userId);
-  localStorage.setItem('santa_groups', JSON.stringify(local.groups));
-  if (local.name) {
-    localStorage.setItem('santa_name', local.name);
-  }
+  if (local.room) localStorage.setItem('santa_room', local.room);
+  if (local.myUid) localStorage.setItem('santa_uid', local.myUid);
+  if (local.name) localStorage.setItem('santa_name', local.name);
+  if (local.role) localStorage.setItem('santa_role', local.role);
 }
 
-// Clear localStorage - UPDATED
+// Clear localStorage
 function clearLocalStorage() {
-  localStorage.removeItem('santa_userId');
-  localStorage.removeItem('santa_groups');
+  localStorage.removeItem('santa_room');
+  localStorage.removeItem('santa_uid');
   localStorage.removeItem('santa_name');
+  localStorage.removeItem('santa_role');
 }
 
 // Show a specific screen
@@ -255,7 +245,7 @@ function removeWishInput(type, index) {
   }
 }
 
-// Create a lobby - UPDATED
+// Create a lobby
 async function createLobby() {
   const name = document.getElementById('createName').value.trim();
   const minSpend = document.getElementById('minSpend').value;
@@ -295,25 +285,20 @@ async function createLobby() {
     drawStarted: false
   });
   
-  // Set local state - UPDATED FOR MULTIPLE GROUPS
-  local.currentGroup = code;
+  // Set local state
+  local.role = 'owner';
+  local.room = code;
   local.name = name;
-  
-  // Add to groups
-  local.groups[code] = {
-    name: name,
-    role: 'owner',
-    assignedTo: null,
-    assignedName: null,
-    assignedWishes: []
-  };
+  local.myUid = 'owner_' + Date.now();
+  local.isOwner = true;
+  local.wishes = wishes;
   
   // Join as owner
   await joinRoom(code, true, { name, wishes });
   showToast('Lobby created! 🎄');
 }
 
-// Join a lobby - UPDATED
+// Join a lobby
 async function joinLobby() {
   if (joinInProgress) {
     showToast('Please wait...');
@@ -373,18 +358,13 @@ async function joinLobby() {
       return;
     }
     
-    // Set local state - UPDATED FOR MULTIPLE GROUPS
-    local.currentGroup = code;
+    // Set local state
+    local.role = 'member';
+    local.room = code;
     local.name = name;
-    
-    // Add to groups
-    local.groups[code] = {
-      name: name,
-      role: 'member',
-      assignedTo: null,
-      assignedName: null,
-      assignedWishes: []
-    };
+    local.myUid = 'member_' + Date.now();
+    local.isOwner = false;
+    local.wishes = wishes;
     
     // Join room
     await joinRoom(code, false, { name, wishes });
@@ -436,9 +416,9 @@ function collectWishes(type) {
   return wishes;
 }
 
-// Join room function - UPDATED
+// Join room function
 async function joinRoom(room, asOwner, payload) {
-  const memberRef = db.ref(`rooms/${room}/members/${local.userId}`);
+  const memberRef = db.ref(`rooms/${room}/members/${local.myUid}`);
   
   // Generate festive icon for user
   const iconIndex = Math.floor(Math.random() * festiveIcons.length);
@@ -494,8 +474,6 @@ async function joinRoom(room, asOwner, payload) {
   // Show admin controls if owner
   if (asOwner) {
     adminControls.classList.remove('hidden');
-  } else {
-    adminControls.classList.add('hidden');
   }
   
   // Start listening to room updates
@@ -505,182 +483,134 @@ async function joinRoom(room, asOwner, payload) {
   showScreen(lobbyScreen);
 }
 
-// Show My Groups screen - NEW FUNCTION
-function showMyGroups() {
-  renderGroupsList();
-  showScreen(myGroupsScreen);
-}
-
-// Render groups list - NEW FUNCTION
-function renderGroupsList() {
-  groupsList.innerHTML = '';
-  const groupEntries = Object.entries(local.groups);
-  
-  if (groupEntries.length === 0) {
-    emptyGroupsState.style.display = 'block';
-    return;
-  }
-  
-  emptyGroupsState.style.display = 'none';
-  
-  groupEntries.forEach(([roomCode, groupData]) => {
-    const groupCard = document.createElement('div');
-    groupCard.className = 'player-card group-card';
-    groupCard.onclick = () => openGroup(roomCode);
-    
-    groupCard.innerHTML = `
-      <div class="group-info">
-        <div class="group-icon">🎄</div>
-        <div class="group-details">
-          <div class="group-name">Group: ${roomCode}</div>
-          <div class="group-role">${groupData.role === 'owner' ? '👑 Owner' : '🎅 Member'}</div>
-          ${groupData.assignedName ? `
-            <div class="group-assignment">
-              <i class="fas fa-gift"></i>
-              You're gifting to: ${groupData.assignedName}
-            </div>
-          ` : `
-            <div class="group-status">
-              <i class="fas fa-clock"></i>
-              Draw pending
-            </div>
-          `}
-        </div>
-        <div class="group-arrow">
-          <i class="fas fa-chevron-right"></i>
-        </div>
-      </div>
-    `;
-    
-    groupsList.appendChild(groupCard);
-  });
-}
-
-// Open a specific group - NEW FUNCTION
-async function openGroup(roomCode) {
-  // Set as current group
-  local.currentGroup = roomCode;
-  
-  // Check if group still exists and get latest data
-  const roomRef = db.ref('rooms/' + roomCode);
+// Rejoin room
+async function rejoinRoom() {
+  const roomRef = db.ref('rooms/' + local.room);
   const snap = await roomRef.get();
   
   if (!snap.exists()) {
-    showToast('This group no longer exists');
-    delete local.groups[roomCode];
-    saveToLocalStorage();
-    renderGroupsList();
+    showToast('Room no longer exists');
+    clearLocalStorage();
+    showScreen(homeScreen);
     return;
   }
   
   const roomData = snap.val();
   
-  // Update our group data with latest assignment info
-  const assignmentRef = db.ref(`rooms/${roomCode}/assignments/${local.userId}`);
-  const assignmentSnap = await assignmentRef.get();
+  // Check if user is still in the room
+  const memberRef = db.ref(`rooms/${local.room}/members/${local.myUid}`);
+  const memberSnap = await memberRef.get();
   
-  if (assignmentSnap.exists()) {
-    const assignment = assignmentSnap.val();
-    local.groups[roomCode].assignedTo = assignment.toUid;
-    local.groups[roomCode].assignedName = assignment.name;
-    local.groups[roomCode].assignedWishes = assignment.wishes || [];
-  } else {
-    local.groups[roomCode].assignedTo = null;
-    local.groups[roomCode].assignedName = null;
-    local.groups[roomCode].assignedWishes = [];
+  if (!memberSnap.exists()) {
+    showToast('You were removed from the room');
+    clearLocalStorage();
+    showScreen(homeScreen);
+    return;
   }
   
-  saveToLocalStorage();
+  // Get user's wishes and assignment
+  const memberData = memberSnap.val();
+  local.wishes = memberData.wishes || [];
+  local.assignedToUid = memberData.assignedToUid || null; // NEW: Get our assignment
   
-  // Show appropriate screen based on draw status
-  if (roomData.drawStarted) {
-    showGroupResult(roomCode);
-  } else {
-    showGroupLobby(roomCode);
+  // Update UI
+  document.getElementById('lobbyTitle').textContent = `Lobby: ${local.room}`;
+  document.getElementById('settingsLobbyCode').textContent = local.room;
+  
+  // Populate user data
+  document.getElementById('playerName').value = local.name;
+  
+  // Clear and recreate wish inputs
+  const editWishContainer = document.getElementById('editWishInputs');
+  editWishContainer.innerHTML = '';
+  
+  local.wishes.forEach((wish, index) => {
+    const inputGroup = document.createElement('div');
+    inputGroup.className = 'wish-input-group';
+    
+    const wishInput = document.createElement('input');
+    wishInput.type = 'text';
+    wishInput.id = `editWish${index + 1}`;
+    wishInput.className = 'form-input';
+    wishInput.placeholder = `🎁 Wish ${index + 1}`;
+    wishInput.value = wish;
+    
+    if (index >= 3) {
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'remove-wish-btn';
+      removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+      removeBtn.onclick = () => removeWishInput('edit', index + 1);
+      inputGroup.appendChild(removeBtn);
+    }
+    
+    inputGroup.appendChild(wishInput);
+    editWishContainer.appendChild(inputGroup);
+  });
+  
+  editWishCount = Math.max(3, local.wishes.length);
+  
+  // Show admin controls if owner
+  if (local.isOwner) {
+    adminControls.classList.remove('hidden');
   }
-}
-
-// Show group lobby (read-only view) - NEW FUNCTION
-function showGroupLobby(roomCode) {
-  // Update UI to show this is a group view
-  document.getElementById('lobbyTitle').textContent = `Group: ${roomCode}`;
-  document.getElementById('settingsLobbyCode').textContent = roomCode;
   
-  // Hide edit buttons since we're in read-only mode
-  const saveButton = document.getElementById('btnSaveWishlist');
-  const addWishButton = document.getElementById('btnAddEditWish');
-  if (saveButton) saveButton.style.display = 'none';
-  if (addWishButton) addWishButton.style.display = 'none';
+  // Update settings display
+  document.getElementById('minSpendDisplay').textContent = roomData.minSpend || 50;
+  document.getElementById('maxPlayersDisplay').textContent = roomData.maxPlayers || 10;
+  document.getElementById('settingsMinSpend').textContent = roomData.minSpend || 50;
+  document.getElementById('settingsMaxPlayers').textContent = roomData.maxPlayers || 10;
   
-  // Make inputs readonly
-  const inputs = document.querySelectorAll('#myCardTab input');
-  inputs.forEach(input => input.readOnly = true);
+  if (roomData.giftDeadline) {
+    const deadline = new Date(roomData.giftDeadline);
+    document.getElementById('deadlineDisplay').textContent = deadline.toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'short'
+    });
+    document.getElementById('settingsDeadline').textContent = deadline.toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric'
+    });
+  }
   
   // Start listening to room updates
-  listenRoom(roomCode);
+  listenRoom(local.room);
   
-  showScreen(lobbyScreen);
-}
-
-// Show group result - NEW FUNCTION
-function showGroupResult(roomCode) {
-  const groupData = local.groups[roomCode];
-  
-  if (groupData.assignedName) {
-    assignedPerson.textContent = groupData.assignedName;
-    assignedWishes.innerHTML = '';
-    
-    if (groupData.assignedWishes && groupData.assignedWishes.length > 0) {
-      groupData.assignedWishes.forEach(wish => {
-        const wishItem = document.createElement('div');
-        wishItem.className = 'wish-item';
-        wishItem.textContent = wish;
-        assignedWishes.appendChild(wishItem);
-      });
-    } else {
-      const wishItem = document.createElement('div');
-      wishItem.className = 'wish-item';
-      wishItem.textContent = 'No wishes listed';
-      assignedWishes.appendChild(wishItem);
-    }
+  // Show appropriate screen
+  if (roomData.drawStarted) {
+    showScreen(resultScreen);
+    showDrawResult();
+  } else {
+    showScreen(lobbyScreen);
   }
-  
-  showScreen(resultScreen);
 }
 
-// Listen for room updates - UPDATED
+// Listen for room updates
 function listenRoom(room) {
   const membersRef = db.ref(`rooms/${room}/members`);
   const roomRef = db.ref('rooms/' + room);
-  const assignmentRef = db.ref(`rooms/${room}/assignments/${local.userId}`);
-  
-  // Listen for assignment changes
-  assignmentRef.on('value', snap => {
-    if (snap.exists()) {
-      const assignment = snap.val();
-      if (local.groups[room]) {
-        local.groups[room].assignedTo = assignment.toUid;
-        local.groups[room].assignedName = assignment.name;
-        local.groups[room].assignedWishes = assignment.wishes || [];
-        saveToLocalStorage();
-      }
-    }
-  });
   
   membersRef.on('value', snap => {
     const members = snap.val() || {};
     const membersArr = Object.entries(members).map(([uid, info]) => ({ uid, ...info }));
     
+    // Update our local assignment if it exists
+    if (members[local.myUid] && members[local.myUid].assignedToUid) {
+      local.assignedToUid = members[local.myUid].assignedToUid;
+    }
+    
     renderPlayerList(membersArr);
     playerCount.textContent = `${membersArr.length} player${membersArr.length !== 1 ? 's' : ''}`;
     
     // Check if current user is still in the room
-    if (!members[local.userId]) {
+    if (!members[local.myUid]) {
       showToast('You were removed from the lobby');
-      delete local.groups[room];
-      saveToLocalStorage();
+      clearLocalStorage();
       showScreen(homeScreen);
       return;
+    }
+    
+    // Update local wishes if they changed
+    if (members[local.myUid].wishes) {
+      local.wishes = members[local.myUid].wishes;
     }
   });
   
@@ -688,8 +618,7 @@ function listenRoom(room) {
     const roomData = snap.val();
     if (!roomData) {
       showToast('Lobby was terminated');
-      delete local.groups[room];
-      saveToLocalStorage();
+      clearLocalStorage();
       showScreen(homeScreen);
       return;
     }
@@ -711,14 +640,14 @@ function listenRoom(room) {
     }
     
     // Check if draw has started
-    if (roomData.drawStarted && local.currentGroup === room) {
+    if (roomData.drawStarted) {
       showScreen(resultScreen);
       showDrawResult();
     }
   });
 }
 
-// Render player list - UPDATED
+// Render player list - FIXED VERSION
 function renderPlayerList(players) {
   playersList.innerHTML = '';
   
@@ -726,14 +655,14 @@ function renderPlayerList(players) {
     const playerCard = document.createElement('div');
     playerCard.className = 'player-card';
     
-    // Check if this player is the one WE are assigned to gift
-    const groupData = local.groups[local.currentGroup];
-    if (groupData && player.uid === groupData.assignedTo) {
+    // FIXED: Check if this player is the one WE are assigned to gift
+    // (not the one who is assigned to gift to us)
+    if (player.uid === local.assignedToUid) {
       playerCard.classList.add('assigned');
     }
     
     // Check if this is the current user
-    const isCurrentUser = player.uid === local.userId;
+    const isCurrentUser = player.uid === local.myUid;
     const displayName = isCurrentUser ? `${player.name} (you)` : player.name;
     
     playerCard.innerHTML = `
@@ -786,7 +715,7 @@ function showPlayerDetails(player) {
   showModal('playerModal');
 }
 
-// Save wishlist - UPDATED
+// Save wishlist
 async function saveWishlist() {
   const name = document.getElementById('playerName').value.trim();
   if (!name) {
@@ -796,7 +725,7 @@ async function saveWishlist() {
   
   // Check for duplicate names (if name changed)
   if (name !== local.name) {
-    const membersRef = db.ref(`rooms/${local.currentGroup}/members`);
+    const membersRef = db.ref(`rooms/${local.room}/members`);
     const membersSnap = await membersRef.get();
     const members = membersSnap.val() || {};
     
@@ -819,16 +748,14 @@ async function saveWishlist() {
   }
   
   // Update in Firebase
-  await db.ref(`rooms/${local.currentGroup}/members/${local.userId}`).update({
+  await db.ref(`rooms/${local.room}/members/${local.myUid}`).update({
     name: name,
     wishes: wishes
   });
   
   // Update local state
   local.name = name;
-  local.groups[local.currentGroup].name = name;
-  
-  saveToLocalStorage();
+  local.wishes = wishes;
   
   showToast('Wishlist updated! 🎁');
 }
@@ -852,9 +779,9 @@ function showEditSettingsModal() {
 
 // Save admin settings
 async function saveAdminSettings(minSpend, maxPlayers, giftDeadline) {
-  if (local.groups[local.currentGroup]?.role !== 'owner') return;
+  if (!local.isOwner) return;
   
-  await db.ref(`rooms/${local.currentGroup}`).update({
+  await db.ref(`rooms/${local.room}`).update({
     minSpend: minSpend,
     maxPlayers: maxPlayers,
     giftDeadline: giftDeadline
@@ -865,9 +792,9 @@ async function saveAdminSettings(minSpend, maxPlayers, giftDeadline) {
 
 // Start the draw
 async function startDraw() {
-  if (local.groups[local.currentGroup]?.role !== 'owner') return;
+  if (!local.isOwner) return;
   
-  const room = local.currentGroup;
+  const room = local.room;
   const membersSnap = await db.ref(`rooms/${room}/members`).get();
   const members = membersSnap.val();
   
@@ -901,7 +828,7 @@ async function startDraw() {
     const to = assigned[i];
     const target = entries.find(e => e.uid === to);
     
-    // Store assignment correctly - each user gets assignedToUid pointing to who THEY gift
+    // FIXED: Store assignment correctly - each user gets assignedToUid pointing to who THEY gift
     updates[`rooms/${room}/members/${from}/assignedToUid`] = to;
     updates[`rooms/${room}/assignments/${from}`] = {
       toUid: to,
@@ -916,9 +843,9 @@ async function startDraw() {
   showToast('Draw completed! ✨');
 }
 
-// Show draw result - UPDATED
+// Show draw result
 async function showDrawResult() {
-  const assignmentRef = db.ref(`rooms/${local.currentGroup}/assignments/${local.userId}`);
+  const assignmentRef = db.ref(`rooms/${local.room}/assignments/${local.myUid}`);
   const assignmentSnap = await assignmentRef.get();
   
   if (assignmentSnap.exists()) {
@@ -940,43 +867,36 @@ async function showDrawResult() {
       wishItem.textContent = 'No wishes listed';
       assignedWishes.appendChild(wishItem);
     }
-    
-    // Update local groups data
-    if (local.groups[local.currentGroup]) {
-      local.groups[local.currentGroup].assignedTo = assignment.toUid;
-      local.groups[local.currentGroup].assignedName = assignment.name;
-      local.groups[local.currentGroup].assignedWishes = assignment.wishes || [];
-      saveToLocalStorage();
-    }
   }
 }
 
-// Leave the lobby - UPDATED
+// Leave the lobby
 async function leaveLobby() {
-  if (confirm('Are you sure you want to leave this group?')) {
-    const roomCode = local.currentGroup;
-    
-    if (roomCode) {
+  if (confirm('Are you sure you want to leave the lobby?')) {
+    if (local.room && local.myUid) {
       // Remove user from members list
-      await db.ref(`rooms/${roomCode}/members/${local.userId}`).remove();
+      await db.ref(`rooms/${local.room}/members/${local.myUid}`).remove();
       
-      // Remove from local groups
-      delete local.groups[roomCode];
-      
-      // If owner leaves and no other members, delete the room
-      if (local.groups[roomCode]?.role === 'owner') {
-        const membersSnap = await db.ref(`rooms/${roomCode}/members`).get();
-        if (!membersSnap.exists() || Object.keys(membersSnap.val()).length === 0) {
-          await db.ref(`rooms/${roomCode}`).remove();
-        }
+      // If owner leaves, delete the room
+      if (local.isOwner) {
+        await db.ref(`rooms/${local.room}`).remove();
       }
     }
     
-    local.currentGroup = null;
-    saveToLocalStorage();
+    // Clear local state
+    local = {
+      role: null,
+      room: null,
+      name: null,
+      myUid: null,
+      isOwner: false,
+      wishes: [],
+      assignedToUid: null
+    };
     
+    clearLocalStorage();
     showScreen(homeScreen);
-    showToast('Left the group');
+    showToast('Left the lobby');
   }
 }
 
